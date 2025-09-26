@@ -3,7 +3,7 @@ import random
 from uuid import uuid4, UUID
 from dataclasses import dataclass
 from typing import Tuple
-import math
+import math 
 
 
 @dataclass
@@ -15,7 +15,7 @@ class Cell:
     # dynamics
     reproduction_probability: float = 0.1   # less frequent
     growth_factor: float = 0.0              # no passive growth (let FOOD drive growth)
-    degradation_factor: float = 0.995       # mild multiplicative decay
+    degradation_factor: float = 1 # 0.995   # mild multiplicative decay
     basal_metabolism: float = 0.15          # fixed cost per tick
     move_cost_per_unit: float = 0.06        # cost per unit of speed (per tick)
     max_energy: float = 50.0                # lower cap to avoid huge bubbles
@@ -32,8 +32,7 @@ class Cell:
             return None
 
         # 1) update movement, then apply movement cost
-        self.update_velocity()
-        self.move()
+        # self.move()
         speed_mag = math.hypot(self.vx, self.vy)
 
         # 2) energy accounting
@@ -75,6 +74,7 @@ class Cell:
                 move_cost_per_unit=self.move_cost_per_unit,
                 max_energy=self.max_energy,
             )
+
         return offspring
 
     def grow(self, amount: float) -> None:
@@ -88,18 +88,24 @@ class Cell:
     def die(self) -> None:
         self.energy = 0.0
 
-    def update_velocity(self) -> None:
-        self.vx += random.uniform(-self.jitter, self.jitter)
-        self.vy += random.uniform(-self.jitter, self.jitter)
-        s2 = self.vx*self.vx + self.vy*self.vy
-        if s2 > self.speed*self.speed:
-            k = self.speed / (s2**0.5)
-            self.vx *= k
-            self.vy *= k
+    def update_velocity(self, velocity: Tuple[float, float], dt: float = 1.0) -> None:
+        """
+        Update the cell's velocity based on an external (vx, vy) tuple.
+        Velocity is clamped to the max speed.
+        """
+        vx, vy = velocity
+        s2 = vx * vx + vy * vy
+        if s2 > self.speed * self.speed:
+            k = self.speed / (s2 ** 0.5)
+            vx *= k
+            vy *= k
 
-    def move(self) -> None:
-        x, y = self.position
-        self.position = (x + self.vx, y + self.vy)
+        self.vx = vx
+        self.vy = vy
+
+    # def move(self) -> None:
+    #     x, y = self.position
+    #     self.position = (x + self.vx, y + self.vy)
 
     def consume(self, food) -> None:
         gained = getattr(food, "energy", 0.0)
