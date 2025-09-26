@@ -9,11 +9,6 @@ from entities import Food, Venom
 from cell import Cell
 
 
-def _dist2(a: Tuple[float, float], b: Tuple[float, float]) -> float:
-    dx, dy = a[0] - b[0], a[1] - b[1]
-    return dx * dx + dy * dy
-
-
 class Universe:
     """
     Simulation universe:
@@ -93,7 +88,7 @@ class Universe:
         self.cells: List[Cell] = []
 
     # ---- Public API ----
-    def add_agent(self, agent: Cell) -> None:
+    def add_cell(self, agent: Cell) -> None:
         self.cells.append(agent)
 
     def add_food(self, food: Food) -> None:
