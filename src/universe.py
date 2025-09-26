@@ -11,8 +11,11 @@ from cell import Cell
 
 class Universe:
     """
-    Converts incoming energy into Food and Venom instances.
-    Each chunk is >= 1.0. Food stores 'energy'; Venom stores 'toxicity'.
+    Converts incoming energy into Food and Venom instances and updates Cells.
+    Each step:
+      A) Cells run (move/grow/decay/reproduce) and get kept inside bounds
+      B) Input energy -> spawn Food/Venom
+      C) Degrade Food/Venom and cleanup
     """
 
     def __init__(
@@ -31,9 +34,15 @@ class Universe:
         max_new_venoms: int = 6,
         min_unit_food: float = 1.0,
         min_unit_venom: float = 1.0,
+
+        # NEW: boundary handling for moving cells
+        boundary_mode: str = "bounce",     # "bounce" or "wrap"
+        bounce_restitution: float = 0.8,   # speed kept after bounce
     ):
         assert 0.0 <= ratio <= 1.0, "ratio must be in [0, 1]"
         assert width > 0 and height > 0, "Universe dimensions must be positive"
+        assert boundary_mode in ("bounce", "wrap"), "boundary_mode must be 'bounce' or 'wrap'"
+
         self.energy = initial_energy
         self.ratio = ratio
         self.waste_factor = waste_factor
@@ -48,6 +57,9 @@ class Universe:
         self.max_new_venoms = max_new_venoms
         self.min_unit_food = min_unit_food
         self.min_unit_venom = min_unit_venom
+
+        self.boundary_mode = boundary_mode
+        self.bounce_restitution = bounce_restitution
 
         self.foods: List[Food] = []
         self.venoms: List[Venom] = []
@@ -64,7 +76,29 @@ class Universe:
         self.venoms.append(venom)
 
     def run(self, input_energy: float) -> tuple[list[Food], list[Venom]]:
-        """One step: waste+jitter → split → instantiate → degrade."""
+        """
+        One step:
+          A) Update/move cells (and keep them inside bounds)
+          B) Convert input_energy -> Food/Venom
+          C) Degrade resources and cleanup
+        """
+        # ---- A) cells update & movement ----
+        offspring: List[Cell] = []
+        for cell in list(self.agents):  # copy in case we append offspring
+            child = cell.run()
+            self._apply_bounds(cell)  # keep inside (bounce or wrap)
+            if child is not None:
+                self._apply_bounds(child)
+                offspring.append(child)
+
+        if offspring:
+            self.agents.extend(offspring)
+
+        # Optional: cleanup dead (energy <= 0) before spawning
+        if self.cleanup_depleted:
+            self.agents = [c for c in self.agents if c.energy > 0.0]
+
+        # ---- B) input energy -> spawn ----
         usable = input_energy * self.waste_factor * random.uniform(0.8, 0.99)
         ef = usable * self.ratio
         ev = usable * (1.0 - self.ratio)
@@ -73,6 +107,8 @@ class Universe:
         venoms = self._create_venoms(self._random_partition(ev, self.min_unit_venom, self.max_new_venoms))
 
         self.energy += input_energy
+
+        # ---- C) degrade & cleanup ----
         self.degrade_all()
         return foods, venoms
 
@@ -97,7 +133,14 @@ class Universe:
                 for v in self.venoms
             ],
             "agents": [
-                {"id": str(a.id), "position": a.position} for a in self.agents
+                {
+                    "id": str(a.id),
+                    "energy": a.energy,
+                    "position": a.position,
+                    # expose velocity if present
+                    "velocity": (getattr(a, "vx", 0.0), getattr(a, "vy", 0.0)),
+                }
+                for a in self.agents
             ],
             "config": {
                 "ratio": self.ratio,
@@ -107,6 +150,8 @@ class Universe:
                 "venom_degrade_factor": self.venom_degrade_factor,
                 "cleanup_depleted": self.cleanup_depleted,
                 "bounds": (self.width, self.height),
+                "boundary_mode": self.boundary_mode,
+                "bounce_restitution": self.bounce_restitution,
             },
         }
 
@@ -114,6 +159,38 @@ class Universe:
         return json.dumps(self.get_state(), indent=2)
 
     # ---- Internals ----
+    def _apply_bounds(self, cell: Cell) -> None:
+        """Keep a cell inside bounds by bouncing or wrapping."""
+        x, y = cell.position
+        vx = getattr(cell, "vx", 0.0)
+        vy = getattr(cell, "vy", 0.0)
+
+        if self.boundary_mode == "wrap":
+            # toroidal space
+            if x < 0.0:   x += self.width
+            if x > self.width:  x -= self.width
+            if y < 0.0:   y += self.height
+            if y > self.height: y -= self.height
+        else:  # bounce
+            if x < 0.0:
+                x = 0.0
+                vx = abs(vx) * self.bounce_restitution
+            elif x > self.width:
+                x = self.width
+                vx = -abs(vx) * self.bounce_restitution
+
+            if y < 0.0:
+                y = 0.0
+                vy = abs(vy) * self.bounce_restitution
+            elif y > self.height:
+                y = self.height
+                vy = -abs(vy) * self.bounce_restitution
+
+        cell.position = (x, y)
+        # only set back if attributes exist
+        if hasattr(cell, "vx"): cell.vx = vx
+        if hasattr(cell, "vy"): cell.vy = vy
+
     def _random_partition(self, total: float, min_unit: float, max_parts_cap: int) -> List[float]:
         if total < min_unit:
             return []
