@@ -107,7 +107,8 @@ if __name__ == "__main__":
         universe.add_cell(
             Cell(
                 id=uuid4(),
-                energy=random.uniform(1.0, 10.0),
+                # energy=random.uniform(1.0, 10.0),
+                energy=20.0,
                 position=(random.uniform(0, universe.width),
                         random.uniform(0, universe.height)))
         )
@@ -120,16 +121,22 @@ if __name__ == "__main__":
     renderer.start(universe)
 
     for i in range(1, 101):
-        universe.run(random.uniform(5.0, 12.0))
+        universe.run(random.uniform(1.0, 4.0))
         renderer.update(universe, cycle_idx=i)
 
+        calculate_new_velocity = (i % 5 == 0)  # every 5 cycles
         universe_state = universe.get_state()
         for cell in universe.cells:
             cell_state = get_cell_state(cell=cell)
-            new_velocity = _get_cell_movement(universe_state=universe_state, cell_state=cell_state)
-            print(f"Cell {cell.id} moving from {cell.position} with {new_velocity}.")
-            # cell.update_velocity(new_velocity)
-            cell.run()
+            if calculate_new_velocity:
+                # new_velocity = _get_cell_movement(universe_state=universe_state, cell_state=cell_state)
+                new_velocity = (random.uniform(-1.0, 1.0), random.uniform(-1.0, 1.0))
+                print(f"Cell {cell.id} moving from {cell.position} with {new_velocity}.")
+                cell.update_velocity(new_velocity)
+            offspring = cell.run()
+            if offspring:
+                universe.add_cell(offspring)
+        print("=======================================================================")
 
     print("\nFinal state (summary):")
     print(f"Total energy tracked: {universe.energy:.2f}")
