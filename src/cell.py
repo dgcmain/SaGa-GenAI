@@ -3,7 +3,6 @@ import random
 from uuid import uuid4, UUID
 from dataclasses import dataclass
 from typing import Tuple
-import math 
 
 
 @dataclass
@@ -32,22 +31,19 @@ class Cell:
             return None
 
         # 1) update movement, then apply movement cost
-        # self.move()
-        speed_mag = math.hypot(self.vx, self.vy)
+        self.move()
+        # speed_mag = math.hypot(self.vx, self.vy)
 
         # 2) energy accounting
         if self.growth_factor:
             self.grow(self.growth_factor)      # optional passive growth (default 0)
-        self.degrade(self.degradation_factor)  # multiplicative decay
+        # self.degrade(self.degradation_factor)  # multiplicative decay
         self.energy -= self.basal_metabolism   # fixed cost
-        self.energy -= self.move_cost_per_unit * speed_mag  # movement cost
+        # self.energy -= self.move_cost_per_unit * speed_mag  # movement cost
 
         # 3) clamp & death check
         if self.energy > self.max_energy:
             self.energy = self.max_energy
-        if self.energy <= 0.0:
-            self.die()
-            return None
 
         # 4) reproduction (costly)
         offspring = None
@@ -99,13 +95,12 @@ class Cell:
             k = self.speed / (s2 ** 0.5)
             vx *= k
             vy *= k
-
         self.vx = vx
         self.vy = vy
 
-    # def move(self) -> None:
-    #     x, y = self.position
-    #     self.position = (x + self.vx, y + self.vy)
+    def move(self) -> None:
+        x, y = self.position
+        self.position = (x + self.vx, y + self.vy)
 
     def consume(self, food) -> None:
         gained = getattr(food, "energy", 0.0)

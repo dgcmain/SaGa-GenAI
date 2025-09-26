@@ -35,7 +35,7 @@ class Renderer:
         self,
         food_size_range: tuple[float, float] = (20.0, 400.0),
         venom_size_range: tuple[float, float] = (20.0, 400.0),
-        agent_size_range: tuple[float, float] = (20.0, 500.0),  # diameter range (pts) converted to area
+        agent_size_range: tuple[float, float] = (2.0, 500.0),  # diameter range (pts) converted to area
         sqrt_scale_food: bool = True,
         sqrt_scale_venom: bool = True,
     ):

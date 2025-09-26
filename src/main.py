@@ -121,7 +121,7 @@ if __name__ == "__main__":
     renderer.start(universe)
 
     for i in range(1, 101):
-        universe.run(random.uniform(1.0, 4.0))
+        universe.run(random.uniform(1.0, 7.0))
         renderer.update(universe, cycle_idx=i)
 
         calculate_new_velocity = (i % 5 == 0)  # every 5 cycles
