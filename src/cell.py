@@ -49,8 +49,8 @@ class Cell:
 
     def consume(self, food) -> None:
         """Consume food to gain energy."""
-        if food cerca
-        if venom cerca
+        # if food cerca
+        # if venom cerca
         # self.energy += food.energy
         # food.energy = 0.0
 

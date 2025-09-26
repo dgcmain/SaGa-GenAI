@@ -21,14 +21,8 @@ class Venom:
     id: UUID
     toxicity: float
     position: Tuple[float, float]
-    
+
     def degrade(self, factor: float) -> None:
         self.toxicity *= factor
         if self.toxicity < 0.01:
             self.toxicity = 0.0
-
-
-@dataclass
-class Agent:
-    id: UUID
-    position: Tuple[float, float]

@@ -5,7 +5,8 @@ import random
 from uuid import uuid4
 from typing import List, Tuple, Dict, Any
 
-from entities import Food, Venom, Agent
+from entities import Food, Venom
+from cell import Cell
 
 
 class Universe:
@@ -50,10 +51,10 @@ class Universe:
 
         self.foods: List[Food] = []
         self.venoms: List[Venom] = []
-        self.agents: List[Agent] = []
+        self.agents: List[Cell] = []
 
     # ---- Public API ----
-    def add_agent(self, agent: Agent) -> None:
+    def add_agent(self, agent: Cell) -> None:
         self.agents.append(agent)
 
     def add_food(self, food: Food) -> None:

@@ -5,7 +5,8 @@ matplotlib.use("TkAgg")  # you said Tk works on your machine
 
 import matplotlib.pyplot as plt
 from typing import Protocol, runtime_checkable, List, Sequence
-from entities import Food, Venom, Agent
+from entities import Food, Venom
+from cell import Cell
 import math
 
 
@@ -15,7 +16,7 @@ class RenderableUniverse(Protocol):
     height: float
     foods: List[Food]
     venoms: List[Venom]
-    agents: List[Agent]
+    agents: List[Cell]
 
 
 class Renderer:
@@ -71,7 +72,7 @@ class Renderer:
         # Colors: Food = blue (filled), Venom = red (hollow), Agents = black triangles
         self.food_scatter  = self.ax.scatter([], [], marker='o', c='tab:blue', edgecolors='k', label='Food')
         self.venom_scatter = self.ax.scatter([], [], marker='o', c='tab:red', edgecolors='k', label='Venom')
-        self.agent_scatter = self.ax.scatter([], [], marker='^', c='k', label='Agent')
+        self.agent_scatter = self.ax.scatter([], [], marker='o', c='white', edgecolors='k', label='Agent')
 
         # self.ax.legend(loc="upper right")
         # self.text_box = self.ax.text(0.01, 0.99, "", transform=self.ax.transAxes, va="top")
