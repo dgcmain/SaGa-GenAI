@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import random
 from uuid import uuid4
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Any
 
 from entities import Food, Venom
 from cell import Cell
@@ -121,7 +121,7 @@ class Universe:
             self.foods = [f for f in self.foods if f.energy > 0.0]
             self.venoms = [v for v in self.venoms if v.toxicity > 0.0]
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         return {
             "energy": self.energy,
             "foods": [
