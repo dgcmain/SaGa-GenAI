@@ -40,8 +40,8 @@ if __name__ == "__main__":
     renderer.start(universe)
 
     for i in range(1, 101):
-        universe.run(random.uniform(5.0, 12.0))
-        renderer.update(universe, i)
+        universe.run(input_energy=random.uniform(5.0, 12.0))
+        renderer.update(universe=universe, i=i)
 
     print("\nFinal state (summary):")
     print(f"Total energy tracked: {universe.energy:.2f}")

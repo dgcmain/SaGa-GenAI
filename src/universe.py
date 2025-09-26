@@ -62,7 +62,7 @@ class Universe:
     def add_venom(self, venom: Venom) -> None:
         self.venoms.append(venom)
 
-    def run(self, input_energy: float):
+    def run(self, input_energy: float) -> tuple[list[Food], list[Venom]]:
         """One step: waste+jitter → split → instantiate → degrade."""
         usable = input_energy * self.waste_factor * random.uniform(0.8, 0.99)
         ef = usable * self.ratio
@@ -139,7 +139,7 @@ class Universe:
         chunks = [b + rem * w for b, w in zip(base, weights)]
         random.shuffle(chunks)
         return chunks
-    
+
     def _rand_position(self) -> Tuple[float, float]:
         return (random.uniform(0.0, self.width), random.uniform(0.0, self.height))
 
