@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     # Add some agents to show on the plot
     for _ in range(5):
-        universe.add_cell(
+        universe.add_agent(
             Cell(id=uuid4(),
                 energy=random.uniform(1.0, 10.0),
                 position=(random.uniform(0, universe.width),
