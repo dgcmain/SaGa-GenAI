@@ -1,0 +1,9 @@
+[project]
+name = "aws-ai-agents"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "strands-agents>=1.9.1",
+]
