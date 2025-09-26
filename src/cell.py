@@ -3,6 +3,7 @@ import random
 from uuid import uuid4, UUID
 from dataclasses import dataclass
 from typing import Tuple
+import math 
 
 
 @dataclass
@@ -12,47 +13,75 @@ class Cell:
     position: Tuple[float, float]
 
     # dynamics
-    reproduction_probability: float = 0.2
-    growth_factor: float = 0.5
-    degradation_factor: float = 0.99
-    max_energy: float = 100.0
+    reproduction_probability: float = 0.1   # less frequent
+    growth_factor: float = 0.0              # no passive growth (let FOOD drive growth)
+    degradation_factor: float = 0.995       # mild multiplicative decay
+    basal_metabolism: float = 0.15          # fixed cost per tick
+    move_cost_per_unit: float = 0.06        # cost per unit of speed (per tick)
+    max_energy: float = 50.0                # lower cap to avoid huge bubbles
 
     # movement
     vx: float = 0.0
     vy: float = 0.0
-    speed: float = 3.0          # maximum speed magnitude
-    jitter: float = 1.0         # random perturbation each cycle
+    speed: float = 3.0           # max speed magnitude
+    jitter: float = 1.0          # random perturbation each cycle
 
     def run(self) -> Cell | None:
-        """Simulate one cycle of the cell's life."""
         if self.energy <= 0.0:
             self.die()
             return None
 
-        # growth/decay
-        self.grow(self.growth_factor)
-        self.degrade(self.degradation_factor)
-
-        # movement
+        # 1) update movement, then apply movement cost
         self.update_velocity()
         self.move()
+        speed_mag = math.hypot(self.vx, self.vy)
 
-        # reproduction
-        offspring = None
-        if self.energy > 20 and random.random() < self.reproduction_probability:
-            offspring = self.reproduce()
+        # 2) energy accounting
+        if self.growth_factor:
+            self.grow(self.growth_factor)      # optional passive growth (default 0)
+        self.degrade(self.degradation_factor)  # multiplicative decay
+        self.energy -= self.basal_metabolism   # fixed cost
+        self.energy -= self.move_cost_per_unit * speed_mag  # movement cost
 
-        # cap energy
+        # 3) clamp & death check
         if self.energy > self.max_energy:
             self.energy = self.max_energy
+        if self.energy <= 0.0:
+            self.die()
+            return None
+
+        # 4) reproduction (costly)
+        offspring = None
+        if self.energy > 20.0 and random.random() < self.reproduction_probability:
+            # Give child a fraction of energy; parent pays extra penalty
+            fraction = 0.3
+            child_energy = self.energy * fraction
+            self.energy -= child_energy + 1.0  # reproduction overhead
+            if self.energy <= 0.0:
+                self.die()
+                return None
+            offspring = Cell(
+                id=uuid4(),
+                energy=child_energy,
+                position=self.position,
+                vx=-self.vx * 0.4,
+                vy=-self.vy * 0.4,
+                speed=self.speed,
+                jitter=self.jitter,
+                reproduction_probability=self.reproduction_probability,
+                growth_factor=self.growth_factor,
+                degradation_factor=self.degradation_factor,
+                basal_metabolism=self.basal_metabolism,
+                move_cost_per_unit=self.move_cost_per_unit,
+                max_energy=self.max_energy,
+            )
 
         return offspring
-
 
     def grow(self, amount: float) -> None:
         self.energy += amount
 
-    def degrade(self, factor: float = 0.98) -> None:
+    def degrade(self, factor: float) -> None:
         self.energy *= factor
         if self.energy < 0.01:
             self.energy = 0.0
@@ -60,43 +89,23 @@ class Cell:
     def die(self) -> None:
         self.energy = 0.0
 
-
     def update_velocity(self) -> None:
-        """Random walk with inertia, limited by max speed."""
-        # small random perturbation to velocity
         self.vx += random.uniform(-self.jitter, self.jitter)
         self.vy += random.uniform(-self.jitter, self.jitter)
-
-        # clamp to max speed
-        speed2 = self.vx**2 + self.vy**2
-        if speed2 > self.speed**2:
-            factor = self.speed / (speed2**0.5)
-            self.vx *= factor
-            self.vy *= factor
+        s2 = self.vx*self.vx + self.vy*self.vy
+        if s2 > self.speed*self.speed:
+            k = self.speed / (s2**0.5)
+            self.vx *= k
+            self.vy *= k
 
     def move(self) -> None:
-        """Update position according to velocity."""
         x, y = self.position
         self.position = (x + self.vx, y + self.vy)
 
-
     def consume(self, food) -> None:
-        """Consume food to gain energy (placeholder)."""
-        self.energy += getattr(food, "energy", 0.0)
+        gained = getattr(food, "energy", 0.0)
+        self.energy += gained
         if hasattr(food, "energy"):
             food.energy = 0.0
-
-
-    def reproduce(self) -> Cell:
-        """Create a new cell with half the energy."""
-        offspring_energy = self.energy / 2
-        self.energy /= 2
-        return Cell(
-            id=uuid4(),
-            energy=offspring_energy,
-            position=self.position,
-            vx=-self.vx * 0.5,   # offspring drifts away
-            vy=-self.vy * 0.5,
-            speed=self.speed,
-            jitter=self.jitter,
-        )
+        if self.energy > self.max_energy:
+            self.energy = self.max_energy
