@@ -84,7 +84,7 @@ class Universe:
         """
         # ---- A) cells update & movement ----
         offspring: List[Cell] = []
-        for cell in list(self.agents):  # copy in case we append offspring
+        for cell in list(self.cells):  # copy in case we append offspring
             child = cell.run()
             self._apply_bounds(cell)  # keep inside (bounce or wrap)
             if child is not None:
@@ -92,11 +92,11 @@ class Universe:
                 offspring.append(child)
 
         if offspring:
-            self.agents.extend(offspring)
+            self.cells.extend(offspring)
 
         # Optional: cleanup dead (energy <= 0) before spawning
         if self.cleanup_depleted:
-            self.agents = [c for c in self.agents if c.energy > 0.0]
+            self.cells = [c for c in self.cells if c.energy > 0.0]
 
         # ---- B) input energy -> spawn ----
         usable = input_energy * self.waste_factor * random.uniform(0.8, 0.99)
@@ -132,7 +132,7 @@ class Universe:
                 {"id": str(v.id), "toxicity": v.toxicity, "position": v.position}
                 for v in self.venoms
             ],
-            "agents": [
+            "cells": [
                 {
                     "id": str(a.id),
                     "energy": a.energy,
@@ -140,7 +140,7 @@ class Universe:
                     # expose velocity if present
                     "velocity": (getattr(a, "vx", 0.0), getattr(a, "vy", 0.0)),
                 }
-                for a in self.agents
+                for a in self.cells
             ],
             "config": {
                 "ratio": self.ratio,

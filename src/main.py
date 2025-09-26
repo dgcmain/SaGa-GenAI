@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from typing import Any
 from uuid import uuid4, UUID
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
@@ -46,13 +47,13 @@ def _get_cell_movement(universe_state: dict[str, Any], cell_state: dict[str, Any
     Cell State: {cell_state}
     Universe State: {universe_state}
 
-    Based on your current state and the universe state, decide your next movement direction
-    as a tuple (dx, dy) where dx and dy are floats representing the change in x and y coordinates.
+    Based on your current state and the universe state, decide your next movement velocity
+    as a tuple (vx, vy) where vx and vy are floats representing the velocity in change in x and y coordinates.
     Ensure that your new position remains within the universe bounds defined by width and height.
-    Respond only with the tuple (dx, dy) and nothing else.
+    Respond only with the tuple (vx, vy) and nothing else.
 
-    Example: If your current position is (100, 150) and you decide to move right by 5 and up by 3,
-    you should respond with (5.0, 3.0).
+    Example: If your current position is (100, 150) and you decide to move right
+    by 5 and up by 3, you should respond with (5.0, 3.0).
     You need to calculate the Euclidean distance to nearby food and venom.
 
     You like food, but you avoid venom. If you are close to food, move towards it.
@@ -101,8 +102,9 @@ if __name__ == "__main__":
 
     # Add some agents to show on the plot
     for _ in range(5):
-        universe.add_agent(
-            Cell(id=uuid4(),
+        universe.add_cell(
+            Cell(
+                id=uuid4(),
                 energy=random.uniform(1.0, 10.0),
                 position=(random.uniform(0, universe.width),
                         random.uniform(0, universe.height)))
@@ -112,6 +114,7 @@ if __name__ == "__main__":
     renderer.start(universe)
 
     for i in range(1, 101):
+        renderer.update(universe, cycle_idx=i)
         universe.run(random.uniform(5.0, 12.0))
 
         universe_state = universe.get_state()
@@ -121,13 +124,12 @@ if __name__ == "__main__":
             movement = _get_cell_movement(universe_state=universe_state, cell_state=cell_state)
             new_position = (cell.position[0] + movement[0], cell.position[1] + movement[1])
             # Ensure new position is within bounds
+            print(f"Cell {cell.id} moving from {cell.position} to {new_position} with movement {movement}.")
             new_position = (
                 max(0, min(new_position[0], universe.width)),
                 max(0, min(new_position[1], universe.height))
             )
             cell.position = new_position
-
-        renderer.update(universe, cycle_idx=i)
 
     print("\nFinal state (summary):")
     print(f"Total energy tracked: {universe.energy:.2f}")

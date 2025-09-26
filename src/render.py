@@ -136,10 +136,10 @@ class Renderer:
             self._sizes_area_from_values(vT, *self.venom_size_range, sqrt_scale=self.sqrt_scale_venom)
         )
 
-        # Agents (cells)
-        axx = [a.position[0] for a in universe.agents]
-        ayy = [a.position[1] for a in universe.agents]
-        aE  = [getattr(a, "energy", 0.0) for a in universe.agents]
+        # Cells
+        axx = [a.position[0] for a in universe.cells]
+        ayy = [a.position[1] for a in universe.cells]
+        aE  = [getattr(a, "energy", 0.0) for a in universe.cells]
         self._set_offsets_safe(self.agent_scatter, axx, ayy)
         self.agent_scatter.set_sizes(
             self._sizes_area_from_values(aE, *self.agent_size_range, sqrt_scale=True)
@@ -150,7 +150,7 @@ class Renderer:
         #     f"Cycle: {cycle_idx}\n"
         #     f"Foods: {len(universe.foods)}\n"
         #     f"Venoms: {len(universe.venoms)}\n"
-        #     f"Cells: {len(universe.agents)}\n"
+        #     f"Cells: {len(universe.cells)}\n"
         #     f"(press 'q' or Esc to stop)"
         # )
         self.ax.set_title(f"Universe Live View — Cycle {cycle_idx}")
@@ -163,7 +163,7 @@ class Renderer:
             scatter.set_offsets(np.c_[xs, ys])   # shape (N,2)
         else:
             scatter.set_offsets(np.empty((0, 2)))  # shape (0,2) to avoid IndexError
-            
+
     @property
     def stopped(self) -> bool:
         return self._stopped

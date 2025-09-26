@@ -3,7 +3,7 @@ import random
 from uuid import uuid4, UUID
 from dataclasses import dataclass
 from typing import Tuple
-import math 
+import math
 
 
 @dataclass
@@ -75,7 +75,6 @@ class Cell:
                 move_cost_per_unit=self.move_cost_per_unit,
                 max_energy=self.max_energy,
             )
-
         return offspring
 
     def grow(self, amount: float) -> None:
