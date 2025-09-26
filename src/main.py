@@ -101,7 +101,7 @@ if __name__ == "__main__":
     )
 
     # Add some agents to show on the plot
-    for _ in range(5):
+    for _ in range(2):
         universe.add_cell(
             Cell(
                 id=uuid4(),
@@ -110,25 +110,29 @@ if __name__ == "__main__":
                         random.uniform(0, universe.height)))
         )
 
+    print("Initial state (summary):")
+    print(f"Total energy tracked: {universe.energy:.2f}")
+    print(f"Foods alive: {len(universe.foods)} | Venoms alive: {len(universe.venoms)}")
+
     renderer = Renderer()
     renderer.start(universe)
 
     for i in range(1, 101):
-        renderer.update(universe, cycle_idx=i)
         universe.run(random.uniform(5.0, 12.0))
+        renderer.update(universe, cycle_idx=i)
 
-        # universe_state = universe.get_state()
-        # for cell in universe.cells:
-        #     cell_state = get_cell_state(cell=cell)
-        #     movement = _get_cell_movement(universe_state=universe_state, cell_state=cell_state)
-        #     new_position = (cell.position[0] + movement[0], cell.position[1] + movement[1])
-        #     # Ensure new position is within bounds
-        #     print(f"Cell {cell.id} moving from {cell.position} to {new_position} with movement {movement}.")
-        #     new_position = (
-        #         max(0, min(new_position[0], universe.width)),
-        #         max(0, min(new_position[1], universe.height))
-        #     )
-        #     cell.position = new_position
+        universe_state = universe.get_state()
+        for cell in universe.cells:
+            cell_state = get_cell_state(cell=cell)
+            movement = _get_cell_movement(universe_state=universe_state, cell_state=cell_state)
+            new_position = (cell.position[0] + movement[0], cell.position[1] + movement[1])
+            # Ensure new position is within bounds
+            print(f"Cell {cell.id} moving from {cell.position} to {new_position} with movement {movement}.")
+            new_position = (
+                max(0, min(new_position[0], universe.width)),
+                max(0, min(new_position[1], universe.height))
+            )
+            cell.position = new_position
 
     print("\nFinal state (summary):")
     print(f"Total energy tracked: {universe.energy:.2f}")
