@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import matplotlib
-matplotlib.use("TkAgg")  # or "Qt5Agg"
+matplotlib.use("TkAgg")  # you said Tk works on your machine
 
 import matplotlib.pyplot as plt
 from typing import Protocol, runtime_checkable, List, Sequence
-
 from entities import Food, Venom, Agent
+import math
 
 
 @runtime_checkable
@@ -19,43 +19,44 @@ class RenderableUniverse(Protocol):
 
 
 class Renderer:
-    """Live renderer that depends only on the RenderableUniverse protocol.
-       Food circle size ∝ energy; Venom circle size ∝ toxicity."""
+    """Live renderer. Press 'q' or 'Esc' to stop."""
 
-    def __init__(self,
-                 food_size_range: tuple[float, float] = (20.0, 400.0),
-                 venom_size_range: tuple[float, float] = (20.0, 400.0),
-                 sqrt_scale: bool = True):
+    def __init__(
+        self,
+        food_size_range: tuple[float, float] = (20.0, 400.0),
+        venom_size_range: tuple[float, float] = (20.0, 400.0),
+        sqrt_scale: bool = True,
+    ):
         self.fig = None
         self.ax = None
         self.food_scatter = None
         self.venom_scatter = None
         self.agent_scatter = None
         self.text_box = None
+        self._stopped = False
+        self._cid_key = None
 
         self.food_size_range = food_size_range
         self.venom_size_range = venom_size_range
-        self.sqrt_scale = sqrt_scale  # reduces dominance of big values
+        self.sqrt_scale = sqrt_scale
 
     # ---------- helpers ----------
 
-    def _normalize_sizes(self, values: Sequence[float], vmin: float, vmax: float,
-                         smin: float, smax: float) -> List[float]:
-        """Map values in [vmin, vmax] → sizes in [smin, smax] (points^2)."""
+    def _normalize_sizes(self, values: Sequence[float], smin: float, smax: float) -> List[float]:
         if not values:
             return []
+        vals = [max(v, 0.0) for v in values]
         if self.sqrt_scale:
-            # sqrt scaling tames large values visually
-            import math
-            values = [math.sqrt(max(v, 0.0)) for v in values]
-            vmin = 0.0
-            vmax = max(values) if values else 1.0
-        else:
-            vmax = max(vmax, vmin + 1e-12)
-        if vmax <= vmin + 1e-12:
-            return [smin for _ in values]
-        scale = (smax - smin) / (vmax - vmin)
-        return [smin + (v - vmin) * scale for v in values]
+            vals = [math.sqrt(v) for v in vals]
+        vmax = max(vals) if vals else 1.0
+        if vmax <= 1e-12:
+            return [smin for _ in vals]
+        scale = (smax - smin) / vmax
+        return [smin + v * scale for v in vals]
+
+    def _on_key(self, event) -> None:
+        if event.key in ("q", "escape"):
+            self._stopped = True
 
     # ---------- public ----------
 
@@ -67,57 +68,52 @@ class Renderer:
         self.ax.set_ylabel("Y")
         self.ax.set_title(title)
 
-        # Initialize empty scatters (we will set sizes later in update)
-        self.food_scatter  = self.ax.scatter([], [], marker='o', label='Food')
-        self.venom_scatter = self.ax.scatter([], [], marker='o', facecolors='none', edgecolors='black', label='Venom')
-        self.agent_scatter = self.ax.scatter([], [], marker='^', label='Agent')
-        self.ax.legend(loc="upper right")
+        # Colors: Food = blue (filled), Venom = red (hollow), Agents = black triangles
+        self.food_scatter  = self.ax.scatter([], [], marker='o', c='tab:blue', edgecolors='k', label='Food')
+        self.venom_scatter = self.ax.scatter([], [], marker='o', c='tab:red', edgecolors='k', label='Venom')
+        self.agent_scatter = self.ax.scatter([], [], marker='^', c='k', label='Agent')
 
-        self.text_box = self.ax.text(0.01, 0.99, "", transform=self.ax.transAxes, va="top")
+        # self.ax.legend(loc="upper right")
+        # self.text_box = self.ax.text(0.01, 0.99, "", transform=self.ax.transAxes, va="top")
+
+        # key handler for stop
+        self._cid_key = self.fig.canvas.mpl_connect('key_press_event', self._on_key)
+
         plt.show(block=False)
 
     def update(self, universe: RenderableUniverse, cycle_idx: int) -> None:
-        # --- Foods ---
+        # Foods
         fx = [f.position[0] for f in universe.foods]
         fy = [f.position[1] for f in universe.foods]
-        fE = [max(f.energy, 0.0) for f in universe.foods]
-        f_sizes = self._normalize_sizes(
-            fE,
-            vmin=0.0,
-            vmax=max(fE) if fE else 1.0,
-            smin=self.food_size_range[0],
-            smax=self.food_size_range[1],
-        )
+        fE = [f.energy for f in universe.foods]
         self.food_scatter.set_offsets(list(zip(fx, fy)) if fx else [])
-        self.food_scatter.set_sizes(f_sizes)
+        self.food_scatter.set_sizes(self._normalize_sizes(fE, *self.food_size_range))
 
-        # --- Venoms ---
+        # Venoms
         vx = [v.position[0] for v in universe.venoms]
         vy = [v.position[1] for v in universe.venoms]
-        vT = [max(v.toxicity, 0.0) for v in universe.venoms]
-        v_sizes = self._normalize_sizes(
-            vT,
-            vmin=0.0,
-            vmax=max(vT) if vT else 1.0,
-            smin=self.venom_size_range[0],
-            smax=self.venom_size_range[1],
-        )
+        vT = [v.toxicity for v in universe.venoms]
         self.venom_scatter.set_offsets(list(zip(vx, vy)) if vx else [])
-        self.venom_scatter.set_sizes(v_sizes)
+        self.venom_scatter.set_sizes(self._normalize_sizes(vT, *self.venom_size_range))
 
-        # --- Agents ---
+        # Agents
         axx = [a.position[0] for a in universe.agents]
         ayy = [a.position[1] for a in universe.agents]
         self.agent_scatter.set_offsets(list(zip(axx, ayy)) if axx else [])
 
         # HUD
-        self.text_box.set_text(
-            f"Cycle: {cycle_idx}\n"
-            f"Foods: {len(universe.foods)}\n"
-            f"Venoms: {len(universe.venoms)}\n"
-            f"Agents: {len(universe.agents)}"
-        )
+        # self.text_box.set_text(
+        #     f"Cycle: {cycle_idx}\n"
+        #     f"Foods: {len(universe.foods)}\n"
+        #     f"Venoms: {len(universe.venoms)}\n"
+        #     f"Agents: {len(universe.agents)}\n"
+        #     f"(press 'q' or Esc to stop)"
+        # )
         self.ax.set_title(f"Universe Live View — Cycle {cycle_idx}")
 
         self.fig.canvas.draw()
         plt.pause(0.01)
+
+    @property
+    def stopped(self) -> bool:
+        return self._stopped

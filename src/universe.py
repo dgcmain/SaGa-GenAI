@@ -25,6 +25,11 @@ class Universe:
         food_degrade_factor: float = 0.95,
         venom_degrade_factor: float = 0.90,
         cleanup_depleted: bool = True,
+
+        max_new_foods: int = 6,
+        max_new_venoms: int = 6,
+        min_unit_food: float = 1.0,
+        min_unit_venom: float = 1.0,
     ):
         assert 0.0 <= ratio <= 1.0, "ratio must be in [0, 1]"
         assert width > 0 and height > 0, "Universe dimensions must be positive"
@@ -37,6 +42,11 @@ class Universe:
         self.food_degrade_factor = food_degrade_factor
         self.venom_degrade_factor = venom_degrade_factor
         self.cleanup_depleted = cleanup_depleted
+
+        self.max_new_foods = max_new_foods
+        self.max_new_venoms = max_new_venoms
+        self.min_unit_food = min_unit_food
+        self.min_unit_venom = min_unit_venom
 
         self.foods: List[Food] = []
         self.venoms: List[Venom] = []
@@ -58,8 +68,8 @@ class Universe:
         ef = usable * self.ratio
         ev = usable * (1.0 - self.ratio)
 
-        foods = self._create_foods(self._random_partition(ef, 1.0))
-        venoms = self._create_venoms(self._random_partition(ev, 1.0))
+        foods = self._create_foods(self._random_partition(ef, self.min_unit_food, self.max_new_foods))
+        venoms = self._create_venoms(self._random_partition(ev, self.min_unit_venom, self.max_new_venoms))
 
         self.energy += input_energy
         self.degrade_all()
@@ -103,10 +113,13 @@ class Universe:
         return json.dumps(self.get_state(), indent=2)
 
     # ---- Internals ----
-    def _random_partition(self, total: float, min_unit: float) -> List[float]:
+    def _random_partition(self, total: float, min_unit: float, max_parts_cap: int) -> List[float]:
         if total < min_unit:
             return []
-        max_parts = int(total // min_unit)
+        max_parts_by_energy = int(total // min_unit)
+        if max_parts_by_energy <= 0:
+            return []
+        max_parts = max(1, min(max_parts_by_energy, max_parts_cap))
         n = random.randint(1, max_parts)
 
         base = [min_unit] * n
@@ -126,7 +139,7 @@ class Universe:
         chunks = [b + rem * w for b, w in zip(base, weights)]
         random.shuffle(chunks)
         return chunks
-
+    
     def _rand_position(self) -> Tuple[float, float]:
         return (random.uniform(0.0, self.width), random.uniform(0.0, self.height))
 

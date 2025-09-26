@@ -16,12 +16,16 @@ if __name__ == "__main__":
         initial_energy=0.0,
         ratio=0.6,
         waste_factor=0.95,
-        width=200.0,
-        height=120.0,
+        width=1000.0,
+        height=1200.0,
         venom_energy_to_toxicity=1.5,
         food_degrade_factor=0.96,
         venom_degrade_factor=0.92,
         cleanup_depleted=True,
+        max_new_foods=4,     # fewer items per cycle
+        max_new_venoms=3,    # fewer items per cycle
+        min_unit_food=1.2,   # larger min unit -> fewer, bigger chunks
+        min_unit_venom=1.5,
     )
 
     # Add some agents to show on the plot
@@ -36,7 +40,7 @@ if __name__ == "__main__":
     renderer.start(universe)
 
     for i in range(1, 101):
-        universe.run(random.uniform(25.0, 50.0))
+        universe.run(random.uniform(5.0, 12.0))
         renderer.update(universe, i)
 
     print("\nFinal state (summary):")
