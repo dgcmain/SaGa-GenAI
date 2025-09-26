@@ -1,6 +1,4 @@
-from uuid import UUID, uuid4
-
-from strands import Agent
+from uuid import UUID
 
 from dataclasses import dataclass
 
