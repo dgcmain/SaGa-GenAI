@@ -50,7 +50,6 @@ def _get_cell_movement(universe_state: dict[str, Any], cell_state: dict[str, Any
     Based on your current state and the universe state, decide your next movement velocity
     as a tuple (vx, vy) where vx and vy are floats representing the velocity in change in x and y coordinates.
     Ensure that your new position remains within the universe bounds defined by width and height.
-    Respond only with the tuple (vx, vy) and nothing else.
 
     Example: If your current position is (100, 150) and you decide to move right
     by 5 and up by 3, you should respond with (5.0, 3.0).
@@ -60,17 +59,20 @@ def _get_cell_movement(universe_state: dict[str, Any], cell_state: dict[str, Any
     If you are close to venom, move away from it.
     Consider your energy level: if it's low, prioritize moving towards food.
     If it's high, you can afford to explore more.
+
+    Respond only with the tuple (vx, vy) and nothing else.
     """
     response = agent(message)
     try:
-        movement = eval(response)  # Expecting a tuple (dx, dy)
+        movement_str = response.message["content"][0]["text"].rsplit('\n', 1)[-1] # Expecting a tuple (dx, dy)
+        movement = eval(movement_str)
         if isinstance(movement, tuple) and len(movement) == 2:
             return movement
         else:
             print("Invalid response format. Expected a tuple (dx, dy).")
             return (0.0, 0.0)
     except Exception as e:
-        print(f"Error parsing response: {e}")
+        print(f"Error parsing response: {e}, got response: {response}")
         return (0.0, 0.0)
 
 
@@ -122,17 +124,12 @@ if __name__ == "__main__":
         renderer.update(universe, cycle_idx=i)
 
         universe_state = universe.get_state()
-
-        # universe_state = universe.get_state()
-        # for cell in universe.cells:
-        #     cell_state = get_cell_state(cell=cell)
-        #     movement = _get_cell_movement(universe_state=universe_state, cell_state=cell_state)
-        #     new_position = (cell.position[0] + movement[0], cell.position[1] + movement[1])
-        #     new_position = (
-        #         max(0, min(new_position[0], universe.width)),
-        #         max(0, min(new_position[1], universe.height))
-        #     )
-        #     cell.position = new_position
+        for cell in universe.cells:
+            cell_state = get_cell_state(cell=cell)
+            new_velocity = _get_cell_movement(universe_state=universe_state, cell_state=cell_state)
+            print(f"Cell {cell.id} moving from {cell.position} with {new_velocity}.")
+            # cell.update_velocity(new_velocity)
+            cell.run()
 
     print("\nFinal state (summary):")
     print(f"Total energy tracked: {universe.energy:.2f}")
