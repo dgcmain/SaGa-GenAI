@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+import matplotlib
+matplotlib.use("TkAgg")  # or "Qt5Agg" if you have PyQt5 installed
+
+import matplotlib.pyplot as plt
+
+
 import matplotlib.pyplot as plt
 from typing import Protocol, runtime_checkable, List
 
