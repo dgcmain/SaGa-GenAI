@@ -63,11 +63,11 @@ class Universe:
 
         self.foods: List[Food] = []
         self.venoms: List[Venom] = []
-        self.agents: List[Cell] = []
+        self.cells: List[Cell] = []
 
     # ---- Public API ----
-    def add_agent(self, agent: Cell) -> None:
-        self.agents.append(agent)
+    def add_cell(self, agent: Cell) -> None:
+        self.cells.append(agent)
 
     def add_food(self, food: Food) -> None:
         self.foods.append(food)

@@ -1,17 +1,39 @@
 from __future__ import annotations
 
 import random
-from uuid import uuid4
+from uuid import uuid4, UUID
+from dataclasses import dataclass
+import matplotlib.pyplot as plt
+
+from strands import Agent, tool
+from strands_tools import calculator, current_time
+from strands.models import BedrockModel
 
 from cell import Cell
 from universe import Universe
 from render import Renderer
 
-import matplotlib.pyplot as plt
+
+@tool
+def update_universe(universe_state: dict, cell_state: dict) -> tuple[float, float]:
+    """Update the universe based on the cell's state and return food and venom consumed."""
+
+
+    # Serialize updated states back to dicts
+    updated_universe_state = {
+        'initial_energy': universe.energy,
+        'ratio': universe.ratio,
+        'waste_factor': universe.waste_factor,
+        'width': universe.width,
+        'height': universe.height,
+        'venom_energy_to_toxicity': universe.venom_energy_to_toxicity,
+        'food_degrade_factor': universe.food_degrade_factor,
+        'venom_degrade_factor': universe.venom_degrade_factor,
+        'cleanup_depleted': universe.cleanup_depleted,
+
 
 if __name__ == "__main__":
     random.seed(42)
-
     universe = Universe(
         initial_energy=0.0,
         ratio=0.6,
@@ -28,10 +50,9 @@ if __name__ == "__main__":
         min_unit_venom=1.5,
     )
 
-
     # Add some agents to show on the plot
     for _ in range(5):
-        universe.add_agent(
+        universe.add_cell(
             Cell(id=uuid4(),
                 energy=random.uniform(1.0, 10.0),
                 position=(random.uniform(0, universe.width),
@@ -43,6 +64,20 @@ if __name__ == "__main__":
 
     for i in range(1, 101):
         universe.run(random.uniform(5.0, 12.0))
+
+        universe_state = universe_state.get_state()
+
+        for cell in universe.cells:
+            cell_state = cell.get_state()
+            movement = _get_cell_movement(universe_state, cell_state)
+            new_position = (cell.position[0] + movement[0], cell.position[1] + movement[1])
+            # Ensure new position is within bounds
+            new_position = (
+                max(0, min(new_position[0], universe.width)),
+                max(0, min(new_position[1], universe.height))
+            )
+            cell.position = new_position
+
         renderer.update(universe, cycle_idx=i)
 
     print("\nFinal state (summary):")
@@ -50,3 +85,49 @@ if __name__ == "__main__":
     print(f"Foods alive: {len(universe.foods)} | Venoms alive: {len(universe.venoms)}")
 
     plt.show()
+
+@tool
+def euclidean_distance(p1: tuple[float, float], p2: tuple[float, float]) -> float:
+    return ((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2) ** 0.5
+
+
+def _get_cell_movement(universe_state: dict[str, Any], cell_state: dict[str, Any]) -> dict:
+    # Create a BedrockModel
+    bedrock_model = BedrockModel(
+        model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        region_name="us-west-2",
+        temperature=0.3,
+    )
+
+    # Create an agent with tools from the community-driven strands-tools package
+    # as well as our custom letter_counter tool
+    agent = Agent(
+        model=bedrock_model,
+        tools=[calculator, current_time, letter_counter],
+    )
+
+    # Ask the agent a question that uses the available tools
+    message = f"""
+    You are a biological cell in a 2D universe. You have the following state:
+    Cell State: {cell_state}
+    Universe State: {universe_state}
+
+    Based on your current state and the universe state, decide your next movement direction
+    as a tuple (dx, dy) where dx and dy are floats representing the change in x and y coordinates.
+    Ensure that your new position remains within the universe bounds defined by width and height.
+    Respond only with the tuple (dx, dy) and nothing else.
+
+    Example: If your current position is (100, 150) and you decide to move right by 5 and up by 3,
+    you should respond with (5.0, 3.0).
+    You need to calculate the Euclidean distance to nearby food and venom.
+
+    You like food, but you avoid venom. If you are close to food, move towards it.
+    If you are close to venom, move away from it.
+    Consider your energy level: if it's low, prioritize moving towards food.
+    If it's high, you can afford to explore more.
+    """
+    agent(message)
+
+
+if __name__ == "__main__":
+    main()
