@@ -7,7 +7,7 @@ from typing import List, Tuple, Dict, Any, Optional
 
 from entities import Food, Venom
 from cell import Cell
-
+from tools import _dist2
 
 class Universe:
     """
