@@ -15,7 +15,7 @@ def euclidean_distance(p1: tuple[float, float], p2: tuple[float, float]) -> floa
     return ((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2) ** 0.5
 
 
-def _get_cell_movement(universe_state: dict[str, Any], cell_state: dict[str, Any]) -> dict:
+def _get_cell_movement(universe_state: dict[str, any], cell_state: dict[str, any]) -> dict:
     # Create a BedrockModel
     bedrock_model = BedrockModel(
         model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",

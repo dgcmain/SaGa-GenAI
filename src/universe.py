@@ -9,6 +9,7 @@ from entities import Food, Venom
 from cell import Cell
 from tools import _dist2
 
+
 class Universe:
     """
     Simulation universe:
@@ -87,7 +88,6 @@ class Universe:
         self.venoms: List[Venom] = []
         self.cells: List[Cell] = []
 
-    # ---- Public API ----
     def add_cell(self, agent: Cell) -> None:
         self.cells.append(agent)
 
@@ -105,9 +105,9 @@ class Universe:
           C) Degrade resources & cleanup
         Returns (foods_created, venoms_created, offspring_created)
         """
-        # ---- A) cells update & interactions ----
+
         offspring: List[Cell] = []
-        for cell in list(self.cells):  # iterate over a copy in case we append children
+        for cell in list(self.cells):  
             child = cell.run()
             self._apply_bounds(cell)
             self._interact_partial(cell)
@@ -118,28 +118,23 @@ class Universe:
 
         if offspring:
             self.cells.extend(offspring)
-            self.cells.extend(offspring)
 
-        # Drop dead cells and depleted resources before spawning
         if self.cleanup_depleted:
             self.cells = [c for c in self.cells if c.energy > 0.0]
-            self.foods  = [f for f in self.foods if f.energy > 0.0]
+            self.foods = [f for f in self.foods if f.energy > 0.0]
             self.venoms = [v for v in self.venoms if v.toxicity > 0.0]
 
-        # ---- B) input energy -> spawn ----
-        usable = input_energy * self.waste_factor * random.uniform(0.8, 0.99)
-        ef = usable * self.ratio
-        ev = usable * (1.0 - self.ratio)
+        # usable = input_energy * self.waste_factor * random.uniform(0.8, 0.99)
+        # ef = usable * self.ratio
+        # ev = usable * (1.0 - self.ratio)
+        # foods_created = self._create_foods(self._random_partition(ef, self.min_unit_food,  self.max_new_foods))
+        # venoms_created = self._create_venoms(self._random_partition(ev, self.min_unit_venom, self.max_new_venoms))
 
-        foods_created  = self._create_foods(self._random_partition(ef, self.min_unit_food,  self.max_new_foods))
-        venoms_created = self._create_venoms(self._random_partition(ev, self.min_unit_venom, self.max_new_venoms))
+        # self.energy += input_energy
 
-        self.energy += input_energy
+        # self.degrade_all()
 
-        # ---- C) degrade resources & cleanup ----
-        self.degrade_all()
-
-        return foods_created, venoms_created, offspring
+        # return foods_created, venoms_created, offspring
 
     def degrade_all(self) -> None:
         for f in self.foods:
