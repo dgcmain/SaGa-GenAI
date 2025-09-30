@@ -109,3 +109,10 @@ class Cell:
             food.energy = 0.0
         if self.energy > self.max_energy:
             self.energy = self.max_energy
+
+    def _state(self) -> dict:
+        return {
+            "id": str(self.id),
+            "energy": self.energy,
+            "position": self.position,
+        }
