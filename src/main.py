@@ -35,7 +35,7 @@ if __name__ == "__main__":
         universe.add_cell(
             Cell(
                 id=uuid4(),
-                energy=55.0,  # Start with less energy
+                energy=100.0,  # Start with less energy
                 position=(random.uniform(0, universe.width),
                           random.uniform(0, universe.height)),
                 basal_metabolism=0.08,
@@ -50,7 +50,7 @@ if __name__ == "__main__":
         universe.add_food(
             Food(
                 id=uuid4(),
-                energy=random.uniform(5.0, 15.0),  # Random energy between 5-15
+                energy=random.uniform(80.0, 100.0),  # Random energy between 5-15
                 position=(random.uniform(0, universe.width),
                          random.uniform(0, universe.height))
             )
