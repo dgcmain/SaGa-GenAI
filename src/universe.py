@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 import random
 from uuid import uuid4
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Tuple, Dict, Any, Optional, DefaultDict
+from collections import defaultdict
 
 from entities import Food, Venom
 from cell import Cell
@@ -23,8 +24,8 @@ class Universe:
         initial_energy: float,
         ratio: float,
         waste_factor: float = 0.95,
-        width: float = 100.0,
-        height: float = 100.0,
+        width: float = 1000.0,  # Larger default for better spatial partitioning
+        height: float = 1000.0,
         venom_energy_to_toxicity: float = 1.0,
         food_degrade_factor: float = 0.95,
         venom_degrade_factor: float = 0.90,
@@ -36,27 +37,27 @@ class Universe:
         min_unit_food: float = 1.0,
         min_unit_venom: float = 1.0,
 
-        # cell boundary handling
-        boundary_mode: str = "bounce",   # "bounce" or "wrap"
-        bounce_restitution: float = 0.8, # speed kept after bounce
+        # performance limits
+        max_cells: int = 500,  # Maximum number of cells before simulation slows
+        cell_check_radius: float = 100.0,  # Only check nearby cells/food/venom
 
-        # touch interactions (partial transfer per cycle)
-        touch_radius_food: float = 10.0,
-        touch_radius_venom: float = 10.0,
-        food_transfer_fraction: float = 0.25,   # fraction of food energy transferred
-        venom_transfer_fraction: float = 0.25,  # fraction of venom toxicity applied
-        food_transfer_cap: float = 2.0,         # max energy transferred per touch/cycle
-        venom_transfer_cap: float = 2.0,        # max damage per touch/cycle
+        # cell boundary handling
+        boundary_mode: str = "bounce",
+        bounce_restitution: float = 0.8,
     ):
         assert 0.0 <= ratio <= 1.0, "ratio must be in [0, 1]"
         assert width > 0 and height > 0, "Universe dimensions must be positive"
-        assert boundary_mode in ("bounce", "wrap"), "boundary_mode must be 'bounce' or 'wrap'"
 
         # world config
         self.width = width
         self.height = height
         self.boundary_mode = boundary_mode
         self.bounce_restitution = bounce_restitution
+
+        # performance settings
+        self.max_cells = max_cells
+        self.cell_check_radius = cell_check_radius
+        self.cell_check_radius2 = cell_check_radius * cell_check_radius
 
         # energy pipeline
         self.energy = initial_energy
@@ -75,19 +76,15 @@ class Universe:
         self.min_unit_food = min_unit_food
         self.min_unit_venom = min_unit_venom
 
-        # interactions
-        self.touch_radius_food2 = touch_radius_food * touch_radius_food
-        self.touch_radius_venom2 = touch_radius_venom * touch_radius_venom
-        self.food_transfer_fraction = food_transfer_fraction
-        self.venom_transfer_fraction = venom_transfer_fraction
-        self.food_transfer_cap = food_transfer_cap
-        self.venom_transfer_cap = venom_transfer_cap
-
         # state
         self.foods: List[Food] = []
         self.venoms: List[Venom] = []
         self.cells: List[Cell] = []
 
+        # Spatial partitioning for performance
+        self._spatial_grid: DefaultDict[Tuple[int, int], List[Cell]] = defaultdict(list)
+        self._grid_cell_size = 100.0  # Size of each grid cell
+        
     def add_cell(self, agent: Cell) -> None:
         self.cells.append(agent)
 
@@ -98,44 +95,54 @@ class Universe:
         self.venoms.append(venom)
 
     def run(self, input_energy: float, cycle_count: int) -> tuple[List[Food], List[Venom], List[Cell]]:
-        """
-        One simulation step:
-        A) Update cells (move/grow/decay/reproduce), apply bounds, partial touch interactions
-        B) Spawn Food/Venom from input energy
-        C) Degrade resources & cleanup
-        Returns (foods_created, venoms_created, offspring_created)
-        """
-
+        """Optimized simulation step with spatial partitioning."""
+        
+        # Update spatial grid at start of cycle
+        self._update_spatial_grid()
+        
         offspring: List[Cell] = []
-        for cell in list(self.cells):
-            child = cell.run()
-            self._apply_bounds(cell)
-            self._interact_partial(cell)
-            if child is not None:
-                self._apply_bounds(child)
-                self._interact_partial(child)
-                offspring.append(child)
+        foods_created: List[Food] = []
+        venoms_created: List[Venom] = []
+        
+        # Process cells with performance optimization
+        cell_count = len(self.cells)
+        if cell_count > self.max_cells * 0.8:
+            # Slow down when approaching limit
+            process_every_n = max(1, cell_count // (self.max_cells // 2))
+        else:
+            process_every_n = 1
 
-        if offspring:
+        for i, cell in enumerate(list(self.cells)):
+            if i % process_every_n == 0:  # Skip some cells when population is high
+                child = cell.run()
+                self._apply_bounds(cell)
+                self._interact_partial(cell)
+                if child is not None and len(self.cells) < self.max_cells:
+                    self._apply_bounds(child)
+                    self._interact_partial(child)
+                    offspring.append(child)
+
+        # Add offspring if under limit
+        if offspring and len(self.cells) + len(offspring) <= self.max_cells:
             self.cells.extend(offspring)
 
-        # UNCOMMENT AND FIX THIS SECTION:
-        if cycle_count % 50 == 0:
+        # Add resources every 50 cycles
+        if cycle_count % 50 == 0 and len(self.cells) < self.max_cells:
             usable = input_energy * self.waste_factor * random.uniform(0.8, 0.99)
             ef = usable * self.ratio
             ev = usable * (1.0 - self.ratio)
             foods_created = self._create_foods(self._random_partition(ef, self.min_unit_food, self.max_new_foods))
             venoms_created = self._create_venoms(self._random_partition(ev, self.min_unit_venom, self.max_new_venoms))
-            print(f"🔄 Cycle {cycle_count}: Added {len(foods_created)} foods and {len(venoms_created)} venoms")
             self.energy += input_energy
 
-        # self.degrade_all()
-        # if self.cleanup_depleted:
-        #     self.cells = [c for c in self.cells if c.energy > 0.0]
-        #     self.foods = [f for f in self.foods if f.energy > 0.0]
-        #     self.venoms = [v for v in self.venoms if v.toxicity > 0.0]
+        # Cleanup
+        self.degrade_all()
+        if self.cleanup_depleted:
+            self.cells = [c for c in self.cells if c.energy > 0.0]
+            self.foods = [f for f in self.foods if f.energy > 0.0]
+            self.venoms = [v for v in self.venoms if v.toxicity > 0.0]
 
-        # return foods_created, venoms_created, offspring
+        return foods_created, venoms_created, offspring
 
     def degrade_all(self) -> None:
         for f in self.foods:
@@ -275,46 +282,55 @@ class Universe:
         return best_i
 
     def _interact_partial(self, cell: Cell) -> None:
-        """Gradual energy transfer with size-dependent rates."""
+        """Optimized interaction checking only nearby objects."""
         if cell.energy <= 0.0:
             return
 
-        # Food → cell (GROW gradually)
-        fi = self._nearest_food_within(cell)
-        if fi is not None:
-            food = self.foods[fi]
-            if food.energy > 0.0:
-                # Eating rate depends on cell size relative to food
-                cell_size_factor = min(cell.energy / (food.energy + 0.1), 2.0)  # Cap at 2x
-                base_eat_rate = 0.1
-                eat_rate = base_eat_rate * cell_size_factor
-                
-                amt = min(food.energy * eat_rate, food.energy)
-                food.energy -= amt
-                cell.energy += amt
-                
-                if food.energy <= 0.01:
-                    food.energy = 0.0
+        # Get nearby objects
+        nearby_foods = self._get_nearby_foods(cell.position)
+        nearby_venoms = self._get_nearby_venoms(cell.position)
+        
+        cell_radius = cell.diameter / 2.0
 
-        # Venom → cell (SHRINK gradually)  
-        vi = self._nearest_venom_within(cell)
-        if vi is not None:
-            venom = self.venoms[vi]
-            if venom.toxicity > 0.0:
-                # Poisoning rate depends on venom potency relative to cell size
-                venom_potency = venom.toxicity / (cell.energy + 0.1)
-                base_poison_rate = 0.09
-                poison_rate = base_poison_rate * venom_potency
+        # Food interactions
+        for food in nearby_foods:
+            if food.energy > 0:
+                distance = _dist2(cell.position, food.position) ** 0.5
+                food_radius = food.energy / 2.0
                 
-                dmg = min(venom.toxicity * poison_rate, venom.toxicity)
-                venom.toxicity -= dmg * 0.4  # Venom depletes slower
-                cell.energy -= dmg
-                
-                if venom.toxicity <= 0.01:
-                    venom.toxicity = 0.0
+                if distance <= (cell_radius + food_radius):
+                    # Eating logic
+                    cell_size_factor = min(cell.energy / (food.energy + 0.1), 2.0)
+                    base_eat_rate = 0.1
+                    eat_rate = base_eat_rate * cell_size_factor
+                    
+                    amt = min(food.energy * eat_rate, food.energy)
+                    food.energy -= amt
+                    cell.energy += amt
+                    
+                    if food.energy <= 0.01:
+                        food.energy = 0.0
 
-                if cell.energy <= 0.0:
-                    cell.energy = 0.0
+        # Venom interactions
+        for venom in nearby_venoms:
+            if venom.toxicity > 0:
+                distance = _dist2(cell.position, venom.position) ** 0.5
+                venom_radius = venom.toxicity / 2.0
+                
+                if distance <= (cell_radius + venom_radius):
+                    # Poisoning logic
+                    venom_potency = venom.toxicity / (cell.energy + 0.1)
+                    base_poison_rate = 0.09
+                    poison_rate = base_poison_rate * venom_potency
+                    
+                    dmg = min(venom.toxicity * poison_rate, venom.toxicity)
+                    venom.toxicity -= dmg * 0.4
+                    cell.energy -= dmg
+                    
+                    if venom.toxicity <= 0.01:
+                        venom.toxicity = 0.0
+                    if cell.energy <= 0.0:
+                        cell.energy = 0.0
 
     def _random_partition(self, total: float, min_unit: float, max_parts_cap: int) -> List[float]:
         """Randomly split 'total' into N parts >= min_unit, with N <= max_parts_cap."""
@@ -361,3 +377,51 @@ class Universe:
                   for e in energy_chunks]
         self.venoms.extend(venoms)
         return venoms
+
+    def _get_grid_key(self, position: Tuple[float, float]) -> Tuple[int, int]:
+        """Convert position to grid coordinates."""
+        x, y = position
+        grid_x = int(x // self._grid_cell_size)
+        grid_y = int(y // self._grid_cell_size)
+        return (grid_x, grid_y)
+
+    def _update_spatial_grid(self):
+        """Update the spatial partitioning grid."""
+        self._spatial_grid.clear()
+        for cell in self.cells:
+            if cell.energy > 0:
+                key = self._get_grid_key(cell.position)
+                self._spatial_grid[key].append(cell)
+
+    def _get_nearby_cells(self, position: Tuple[float, float]) -> List[Cell]:
+        """Get cells near a position using spatial partitioning."""
+        center_key = self._get_grid_key(position)
+        nearby_cells = []
+        
+        # Check 3x3 grid around the position
+        for dx in [-1, 0, 1]:
+            for dy in [-1, 0, 1]:
+                check_key = (center_key[0] + dx, center_key[1] + dy)
+                if check_key in self._spatial_grid:
+                    for cell in self._spatial_grid[check_key]:
+                        # Check actual distance
+                        if _dist2(position, cell.position) <= self.cell_check_radius2:
+                            nearby_cells.append(cell)
+        
+        return nearby_cells
+
+    def _get_nearby_foods(self, position: Tuple[float, float]) -> List[Food]:
+        """Get foods near a position."""
+        nearby_foods = []
+        for food in self.foods:
+            if food.energy > 0 and _dist2(position, food.position) <= self.cell_check_radius2:
+                nearby_foods.append(food)
+        return nearby_foods
+
+    def _get_nearby_venoms(self, position: Tuple[float, float]) -> List[Venom]:
+        """Get venoms near a position."""
+        nearby_venoms = []
+        for venom in self.venoms:
+            if venom.toxicity > 0 and _dist2(position, venom.position) <= self.cell_check_radius2:
+                nearby_venoms.append(venom)
+        return nearby_venoms
