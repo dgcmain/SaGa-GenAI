@@ -191,7 +191,6 @@ class Universe:
     def to_json(self) -> str:
         return json.dumps(self.get_state(), indent=2)
 
-    # ---- Internals ----
 
     def _apply_bounds(self, cell: Cell) -> None:
         """Keep a cell inside bounds by bouncing or wrapping and update velocity if bouncing."""
@@ -229,50 +228,100 @@ class Universe:
         if hasattr(cell, "vx"): cell.vx = vx
         if hasattr(cell, "vy"): cell.vy = vy
 
-    def _nearest_food_within(self, pos: Tuple[float, float]) -> Optional[int]:
-        best_i, best_d2 = None, self.touch_radius_food2
-        for i, f in enumerate(self.foods):
-            d2 = _dist2(pos, f.position)
-            if d2 <= best_d2:
-                best_d2 = d2
-                best_i = i
+    def _nearest_food_within(self, cell: Cell) -> Optional[int]:
+        """Find nearest food that is touching the cell (surface-to-surface)."""
+        cell_radius = cell.diameter / 2.0
+        best_i, best_distance = None, float('inf')
+        
+        for i, food in enumerate(self.foods):
+            if food.energy <= 0:
+                continue
+                
+            # Calculate distance between centers
+            distance = _dist2(cell.position, food.position) ** 0.5
+            
+            # Food radius based on its energy (since diameter = energy)
+            food_radius = food.energy / 2.0
+            
+            # Check if surfaces are touching or overlapping
+            if distance <= (cell_radius + food_radius):
+                if distance < best_distance:
+                    best_distance = distance
+                    best_i = i
+        
         return best_i
 
-    def _nearest_venom_within(self, pos: Tuple[float, float]) -> Optional[int]:
-        best_i, best_d2 = None, self.touch_radius_venom2
-        for i, v in enumerate(self.venoms):
-            d2 = _dist2(pos, v.position)
-            if d2 <= best_d2:
-                best_d2 = d2
-                best_i = i
+    def _nearest_venom_within(self, cell: Cell) -> Optional[int]:
+        """Find nearest venom that is touching the cell (surface-to-surface)."""
+        cell_radius = cell.diameter / 2.0
+        best_i, best_distance = None, float('inf')
+        
+        for i, venom in enumerate(self.venoms):
+            if venom.toxicity <= 0:
+                continue
+                
+            # Calculate distance between centers
+            distance = _dist2(cell.position, venom.position) ** 0.5
+            
+            # Venom radius based on its toxicity (since diameter = toxicity)
+            venom_radius = venom.toxicity / 2.0
+            
+            # Check if surfaces are touching or overlapping
+            if distance <= (cell_radius + venom_radius):
+                if distance < best_distance:
+                    best_distance = distance
+                    best_i = i
+        
         return best_i
 
     def _interact_partial(self, cell: Cell) -> None:
-        """Transfer a capped fraction from the nearest food and venom within touch radius."""
+        """Gradual energy transfer with size-dependent rates."""
         if cell.energy <= 0.0:
             return
 
-        # Food → cell (gain some)
-        fi = self._nearest_food_within(cell.position)
+        # Food → cell (GROW gradually)
+        fi = self._nearest_food_within(cell)
         if fi is not None:
             food = self.foods[fi]
             if food.energy > 0.0:
-                amt = min(food.energy * self.food_transfer_fraction, self.food_transfer_cap)
-                if amt > 0.0:
-                    food.energy -= amt
-                    cell.energy += amt
+                # Eating rate depends on cell size relative to food
+                cell_size_factor = min(cell.energy / (food.energy + 0.1), 2.0)  # Cap at 2x
+                base_eat_rate = 0.08
+                eat_rate = base_eat_rate * cell_size_factor
+                
+                amt = min(food.energy * eat_rate, food.energy)
+                food.energy -= amt
+                cell.energy += amt
+                
+                if food.energy <= 0.01:
+                    food.energy = 0.0
+                    print(f"🍽️ Cell finished eating! Final: {cell.energy:.2f}")
+                else:
+                    print(f"🍎 Eating... +{amt:.2f}, Cell: {cell.energy:.2f}, Food: {food.energy:.2f}")
 
-        # Venom → cell (lose some)
-        vi = self._nearest_venom_within(cell.position)
+        # Venom → cell (SHRINK gradually)  
+        vi = self._nearest_venom_within(cell)
         if vi is not None:
             venom = self.venoms[vi]
             if venom.toxicity > 0.0:
-                dmg = min(venom.toxicity * self.venom_transfer_fraction, self.venom_transfer_cap)
-                if dmg > 0.0:
-                    venom.toxicity -= dmg
-                    cell.energy -= dmg
-                    if cell.energy < 0.0:
-                        cell.energy = 0.0
+                # Poisoning rate depends on venom potency relative to cell size
+                venom_potency = venom.toxicity / (cell.energy + 0.1)
+                base_poison_rate = 0.12
+                poison_rate = base_poison_rate * venom_potency
+                
+                dmg = min(venom.toxicity * poison_rate, venom.toxicity)
+                venom.toxicity -= dmg * 0.4  # Venom depletes slower
+                cell.energy -= dmg
+                
+                if venom.toxicity <= 0.01:
+                    venom.toxicity = 0.0
+                    print(f"🧪 Venom depleted! Cell: {cell.energy:.2f}")
+                else:
+                    print(f"☠️ Poisoned... -{dmg:.2f}, Cell: {cell.energy:.2f}, Venom: {venom.toxicity:.2f}")
+                
+                if cell.energy <= 0.0:
+                    cell.energy = 0.0
+                    print(f"💀 Cell succumbed to venom!")
 
     def _random_partition(self, total: float, min_unit: float, max_parts_cap: int) -> List[float]:
         """Randomly split 'total' into N parts >= min_unit, with N <= max_parts_cap."""

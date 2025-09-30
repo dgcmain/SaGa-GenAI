@@ -31,8 +31,8 @@ class Cell:
     max_diameter: float = 30.0   # diameter when energy = max_energy
     
     color: Tuple[float, float, float] = field(default_factory=lambda: (0.0, random.uniform(0.7, 0.99), 0.0))
-    color_mutation_rate: float = 0.99     # Probability of color mutation during reproduction
-    color_mutation_strength: float = 0.8  # How much colors can change during mutation
+    color_mutation_rate: float = 0.99    
+    color_mutation_strength: float = 0.8 
 
     # lifetime tracking
     age: int = 0
