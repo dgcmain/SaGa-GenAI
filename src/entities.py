@@ -15,6 +15,7 @@ class Food:
         if self.energy < 0.01:
             self.energy = 0.0
 
+    @property
     def state(self) -> dict:
         return {
             "id": str(self.id),
@@ -34,6 +35,7 @@ class Venom:
         if self.toxicity < 0.01:
             self.toxicity = 0.0
 
+    @property
     def state(self) -> dict:
         return {
             "id": str(self.id),

@@ -92,7 +92,7 @@ if __name__ == "__main__":
                 cycle_count += 1
                 steps_per_frame = 3
                 for _ in range(steps_per_frame):
-                    input_energy = random.uniform(200.0, 250.0)
+                    input_energy = random.uniform(250.0, 300.0)
                     universe.run(input_energy=input_energy, cycle_count=cycle_count)
                     cycle_count += 1  # Increment for each simulation step
                 
@@ -100,8 +100,6 @@ if __name__ == "__main__":
                 
                 # Print status less frequently
                 if current_time_sim - last_status_time >= 2.0: 
-                    import pprint
-                    pprint.pprint(universe.state())
                     last_status_time = current_time_sim
 
                 last_frame_time = current_time_sim

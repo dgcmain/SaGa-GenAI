@@ -76,7 +76,29 @@ class Cell:
             "hex_color": self.hex_color,
         }
 
-    def run(self) -> Cell | None:
+    @property
+    def state(self) -> dict:
+        return {
+            "id": str(self.id),
+            "energy": self.energy,
+            "position": self.position,
+        }
+    
+    @property
+    def state_full(self) -> dict:
+        return {
+            "id": str(self.id),
+            "energy": self.energy,
+            "position": self.position,
+            "diameter": self.diameter,
+            "age": self.age,
+            "max_age": self.max_age,
+            "color": self.color,
+            "hex_color": self.hex_color,
+            "lifetime_stats": self.lifetime_stats,
+        }
+
+    def run(self, state) -> Cell | None:
         self.age += 1
         self.movement_timer += 1
         
@@ -95,7 +117,7 @@ class Cell:
             self.die()
             return None
 
-        self.think()
+        self.think(state)
         self.move()
 
         return self.reproduce()
@@ -159,15 +181,6 @@ class Cell:
 
         return child
 
-    def _mutate_color(self) -> Tuple[float, float, float]:
-        """Mutate only the green channel with some probability, otherwise inherit parent's color."""
-        if random.random() > self.color_mutation_rate:
-            return self.color
-        
-        r, g, b = self.color
-        g = max(0.0, min(1.0, g + random.uniform(-self.color_mutation_strength, self.color_mutation_strength)))
-        return (r, g, b)
-
     def move(self) -> None:
         x, y = self.position
         self.position = (x + self.vx, y + self.vy)
@@ -180,9 +193,62 @@ class Cell:
         if self.energy > self.max_energy:
             self.energy = self.max_energy
 
-    def think(self) -> None:
+    def think(self, universe_state: dict) -> None:
+        """Use universe state to find closest food and make intelligent movement decisions."""
         self._update_velocity(dt=1.0)
         self._consider_direction_change()
+        
+        # Find closest food and move towards it
+        closest_food = self._find_closest_food(universe_state)
+        if closest_food:
+            self._move_towards_food(closest_food)
+
+    def _find_closest_food(self, universe_state: dict) -> dict | None:
+        """Find the closest food from universe state."""
+        if "foods" not in universe_state or not universe_state["foods"]:
+            return None
+        
+        closest_food = None
+        min_distance = float('inf')
+        
+        for food in universe_state["foods"]:
+            if food.get("energy", 0) > 0:  # Only consider food with energy
+                distance = self._distance_to(food["position"])
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_food = food
+        
+        return closest_food
+
+    def _distance_to(self, target_position: Tuple[float, float]) -> float:
+        """Calculate distance to target position."""
+        x1, y1 = self.position
+        x2, y2 = target_position
+        return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+
+    def _move_towards_food(self, food: dict) -> None:
+        """Adjust velocity to move towards food."""
+        food_pos = food["position"]
+        current_speed = math.sqrt(self.vx**2 + self.vy**2)
+        
+        # Calculate direction to food
+        dx = food_pos[0] - self.position[0]
+        dy = food_pos[1] - self.position[1]
+        distance = math.sqrt(dx**2 + dy**2)
+        
+        if distance > 0:
+            # Normalize direction
+            dx /= distance
+            dy /= distance
+            
+            # Adjust velocity towards food (with some randomness)
+            influence_strength = 0.3  # How strongly to move towards food
+            self.vx = (1 - influence_strength) * self.vx + influence_strength * dx * current_speed
+            self.vy = (1 - influence_strength) * self.vy + influence_strength * dy * current_speed
+            
+            # Reset movement timer since we're making an intentional move
+            self.movement_timer = 0
+
 
     def _consider_direction_change(self):
         """Randomly change direction with small angle adjustments (±20 degrees)."""
@@ -232,22 +298,11 @@ class Cell:
         self.vx *= (1.0 - damp)
         self.vy *= (1.0 - damp)
 
-    def state(self) -> dict:
-        return {
-            "id": str(self.id),
-            "energy": self.energy,
-            "position": self.position,
-        }
-    
-    def state_full(self) -> dict:
-        return {
-            "id": str(self.id),
-            "energy": self.energy,
-            "position": self.position,
-            "diameter": self.diameter,
-            "age": self.age,
-            "max_age": self.max_age,
-            "color": self.color,
-            "hex_color": self.hex_color,
-            "lifetime_stats": self.lifetime_stats,
-        }
+    def _mutate_color(self) -> Tuple[float, float, float]:
+        """Mutate only the green channel with some probability, otherwise inherit parent's color."""
+        if random.random() > self.color_mutation_rate:
+            return self.color
+        
+        r, g, b = self.color
+        g = max(0.0, min(1.0, g + random.uniform(-self.color_mutation_strength, self.color_mutation_strength)))
+        return (r, g, b)

@@ -85,6 +85,15 @@ class Universe:
         self._spatial_grid: DefaultDict[Tuple[int, int], List[Cell]] = defaultdict(list)
         self._grid_cell_size = 100.0  # Size of each grid cell
 
+    @property
+    def state(self) -> dict[str, Any]:
+        """Broadcast minimal state for high-frequency updates (e.g., rendering)."""
+        return {
+            "cells": [cell.state for cell in self.cells if cell.energy > 0],
+            "foods": [food.state for food in self.foods if food.energy > 0],
+            "venoms": [venom.state for venom in self.venoms if venom.toxicity > 0],
+        }
+
     def add_cell(self, agent: Cell) -> None:
         self.cells.append(agent)
 
@@ -115,7 +124,7 @@ class Universe:
 
         for i, cell in enumerate(list(self.cells)):
             if i % process_every_n == 0:  # Skip some cells when population is high
-                child = cell.run()
+                child = cell.run(self.state)
                 self._apply_bounds(cell)
                 self._interact_partial(cell)
                 if child is not None and len(self.cells) < self.max_cells:
@@ -154,13 +163,6 @@ class Universe:
             self.foods  = [f for f in self.foods  if f.energy   > 0.0]
             self.venoms = [v for v in self.venoms if v.toxicity > 0.0]
 
-    def state(self) -> dict[str, Any]:
-        """Broadcast minimal state for high-frequency updates (e.g., rendering)."""
-        return {
-            "cells": [cell.state() for cell in self.cells if cell.energy > 0],
-            "foods": [food.state() for food in self.foods if food.energy > 0],
-            "venoms": [venom.state() for venom in self.venoms if venom.toxicity > 0],
-        }
 
     def _state_full(self) -> dict[str, Any]:
         """Broadcast the complete state of the universe using each entity's _state method."""
@@ -177,9 +179,9 @@ class Universe:
                 "boundary_mode": self.boundary_mode,
                 "bounce_restitution": self.bounce_restitution,
             },
-            "cells": [cell._state() for cell in alive_cells],
-            "foods": [food._state() for food in alive_foods],
-            "venoms": [venom._state() for venom in alive_venoms],
+            "cells": [cell.state for cell in alive_cells],
+            "foods": [food.state for food in alive_foods],
+            "venoms": [venom.state for venom in alive_venoms],
             "statistics": {
                 "total_cells": len(alive_cells),
                 "total_foods": len(alive_foods),
