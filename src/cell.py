@@ -12,13 +12,12 @@ class Cell:
     position: Tuple[float, float]
 
     # dynamics
-    reproduction_probability: float = 0.75       
+    reproduction_probability: float = 0.1       
     reproduction_energy_threshold: float = 35.0  
-    reproduction_age_threshold: int = 10         
+    reproduction_age_threshold: int = 25         
     growth_factor: float = 0.0
-    degradation_factor: float = 0.998
-    basal_metabolism: float = 0.05
-    move_cost_per_unit: float = 0.01
+    basal_metabolism: float = 0.001
+    move_cost_per_unit: float = 0.00001
     max_energy: float = 50.0
 
     # movement
@@ -41,13 +40,12 @@ class Cell:
 
     @property
     def diameter(self) -> float:
-        """Diameter linearly proportional to energy, clamped between min and max."""
+        """Diameter linearly proportional to energy."""
         if self.energy <= 0:
-            return self.min_diameter
+            return 0.0
         
-        # Linear interpolation between min and max diameter based on energy
-        energy_ratio = min(self.energy / self.max_energy, 1.0)  # clamp to 1.0
-        return self.min_diameter + energy_ratio * (self.max_diameter - self.min_diameter)
+        # Simple linear scaling - no artificial max restriction
+        return self.energy
 
     @property
     def hex_color(self) -> str:
@@ -84,9 +82,7 @@ class Cell:
 
         speed_mag = (self.vx**2 + self.vy**2)**0.5
         self.energy -= self.move_cost_per_unit * speed_mag
-        
-        self.degrade(self.degradation_factor)
-        
+                
         if self.energy <= 0.0:
             self.die()
             return None
@@ -94,18 +90,13 @@ class Cell:
         self.think()
         self.move()
 
-        if self.energy > self.max_energy:
-            self.energy = self.max_energy
+        # if self.energy > self.max_energy:
+        #     self.energy = self.max_energy
 
         return self.reproduce()
 
     def grow(self, amount: float) -> None:
         self.energy += amount
-
-    def degrade(self, factor: float) -> None:
-        self.energy *= factor
-        if self.energy < 0.01:
-            self.energy = 0.0
 
     def die(self) -> None:
         self.energy = 0.0
@@ -140,7 +131,6 @@ class Cell:
                 reproduction_energy_threshold=self.reproduction_energy_threshold,
                 reproduction_age_threshold=self.reproduction_age_threshold,
                 growth_factor=self.growth_factor,
-                degradation_factor=self.degradation_factor,
                 basal_metabolism=self.basal_metabolism,
                 move_cost_per_unit=self.move_cost_per_unit,
                 max_energy=self.max_energy,

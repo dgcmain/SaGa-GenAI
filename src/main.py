@@ -40,7 +40,6 @@ if __name__ == "__main__":
                           random.uniform(0, universe.height)),
                 basal_metabolism=0.08,
                 reproduction_probability=0.05,
-                degradation_factor=0.995,
                 move_cost_per_unit=0.02,
             )
         )
@@ -50,7 +49,7 @@ if __name__ == "__main__":
         universe.add_food(
             Food(
                 id=uuid4(),
-                energy=random.uniform(80.0, 100.0),  # Random energy between 5-15
+                energy=random.uniform(50.0, 100.0),  # Random energy between 5-15
                 position=(random.uniform(0, universe.width),
                          random.uniform(0, universe.height))
             )
@@ -61,7 +60,7 @@ if __name__ == "__main__":
         universe.add_venom(
             Venom(
                 id=uuid4(),
-                toxicity=random.uniform(3.0, 8.0),  # Random toxicity between 3-8
+                toxicity=random.uniform(50.0, 100.0),  # Random toxicity between 3-8
                 position=(random.uniform(0, universe.width),
                          random.uniform(0, universe.height))
             )

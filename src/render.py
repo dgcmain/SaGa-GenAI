@@ -1,12 +1,10 @@
 from __future__ import annotations
 import math
 import numpy as np
-
 import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib.patches import PathPatch
+from matplotlib.patches import PathPatch, Circle
 from matplotlib.path import Path
-import matplotlib.collections as mcollections
 matplotlib.use("TkAgg")
 
 from typing import Protocol, runtime_checkable, List, Sequence
@@ -21,181 +19,48 @@ class RenderableUniverse(Protocol):
     height: float
     foods: List[Food]
     venoms: List[Venom]
-    cells: List[Cell]  # Changed from 'agents' to 'cells' to match your Universe class
+    cells: List[Cell]
 
 
 class Renderer:
     """
-    Live renderer. Press 'q' or 'Esc' to stop.
-    
-    Now uses cell.diameter property directly for smooth size changes.
+    Clean renderer where only cells have roughness.
+    Food and venom are simple proportional circles.
     """
 
     def __init__(
         self,
-        food_size_range: tuple[float, float] = (20.0, 400.0),
-        venom_size_range: tuple[float, float] = (20.0, 400.0),
-        sqrt_scale_food: bool = True,
-        sqrt_scale_venom: bool = True,
+        food_diameter_range: tuple[float, float] = (6.0, 20.0),   # Diameter range for food
+        venom_diameter_range: tuple[float, float] = (8.0, 22.0),  # Diameter range for venom
+        cell_roughness: float = 0.4,      # How rough cells look (0=smooth, 1=very rough)
+        cell_stroke_width: float = 1.8,   # Width of cell borders
     ):
         self.fig = None
         self.ax = None
-        self.food_scatter = None
-        self.venom_scatter = None
-        self.cell_scatter = None
-        self.text_box = None
-        self._stopped = False
-
-        self.food_size_range = food_size_range
-        self.venom_size_range = venom_size_range
-        self.sqrt_scale_food = sqrt_scale_food
-        self.sqrt_scale_venom = sqrt_scale_venom
-
-    def _sizes_area_from_values(
-        self, values: Sequence[float], smin: float, smax: float, sqrt_scale: bool
-    ) -> List[float]:
-        """Return sizes in points^2 so that area tracks values (optionally sqrt-tempered)."""
-        if not values:
-            return []
-        vals = [max(v, 0.0) for v in values]
-        if sqrt_scale:
-            vals = [math.sqrt(v) for v in vals]
-        vmax = max(vals) if vals else 1.0
-        if vmax <= 1e-12:
-            return [smin for _ in vals]
-        scale = (smax - smin) / vmax
-        return [smin + v * scale for v in vals]
-
-    def _diameters_to_areas(self, diameters: Sequence[float]) -> List[float]:
-        """Convert diameters to areas (matplotlib scatter uses area for point sizes)."""
-        return [d**2 for d in diameters]
-
-    def _on_key(self, event) -> None:
-        if event.key in ("q", "escape"):
-            self._stopped = True
-
-    def start(self, universe: RenderableUniverse, title: str = "Universe Live View") -> None:
-        self.fig, self.ax = plt.subplots()
-        self.ax.set_xlim(0, universe.width)
-        self.ax.set_ylim(0, universe.height)
-        self.ax.set_xlabel("X")
-        self.ax.set_ylabel("Y")
-        self.ax.set_title(title)
-
-        # Food: blue filled circles
-        self.food_scatter = self.ax.scatter([], [], marker='o', c='tab:blue', label='Food')
-
-        # Venom: red hollow circles
-        self.venom_scatter = self.ax.scatter([], [], marker='o', facecolors='none',
-                                             edgecolors='tab:red', label='Venom')
-
-        # Cells: green filled circles - use diameter property directly
-        self.cell_scatter = self.ax.scatter([], [], marker='o', label='Cell')
-
-        self.ax.legend(loc="upper right")
-        self.fig.canvas.mpl_connect('key_press_event', self._on_key)
-        plt.show(block=False)
-
-    def update(self, universe: RenderableUniverse, cycle_idx: int) -> None:
-        # Foods
-        fx = [f.position[0] for f in universe.foods]
-        fy = [f.position[1] for f in universe.foods]
-        fE = [f.energy for f in universe.foods]
-        self._set_offsets_safe(self.food_scatter, fx, fy)
-        self.food_scatter.set_sizes(
-            self._sizes_area_from_values(fE, *self.food_size_range, sqrt_scale=self.sqrt_scale_food)
-        )
-
-        # Venoms
-        vx = [v.position[0] for v in universe.venoms]
-        vy = [v.position[1] for v in universe.venoms]
-        vT = [v.toxicity for v in universe.venoms]
-        self._set_offsets_safe(self.venom_scatter, vx, vy)
-        self.venom_scatter.set_sizes(
-            self._sizes_area_from_values(vT, *self.venom_size_range, sqrt_scale=self.sqrt_scale_venom)
-        )
-
-        # Cells - use diameter property directly for smooth size changes
-        cx = [c.position[0] for c in universe.cells]
-        cy = [c.position[1] for c in universe.cells]
-        cell_diameters = [c.diameter for c in universe.cells]
-        cell_colors = [cell.hex_color for cell in universe.cells]
-
-        self._set_offsets_safe(self.cell_scatter, cx, cy)
-        self.cell_scatter.set_sizes(self._diameters_to_areas(cell_diameters))
-        self.cell_scatter.set_color(cell_colors)
-
-        # Update title
-        self.ax.set_title(f"Universe Live View — Cycle {cycle_idx}")
-        self.fig.canvas.draw()
-        plt.pause(0.01)
-
-    def _set_offsets_safe(self, scatter, xs, ys):
-        if xs and ys:
-            scatter.set_offsets(np.c_[xs, ys])   # shape (N,2)
-        else:
-            scatter.set_offsets(np.empty((0, 2)))  # shape (0,2) to avoid IndexError
-
-    @property
-    def stopped(self) -> bool:
-        return self._stopped
-    
-
-class RoughRenderer:
-    """
-    Renderer that creates rough, hand-drawn looking cells with strokes.
-    """
-
-    def __init__(
-        self,
-        food_size_range: tuple[float, float] = (20.0, 400.0),
-        venom_size_range: tuple[float, float] = (20.0, 400.0),
-        cell_roughness: float = 0.1,  # How rough the cells look (0=smooth, 1=very rough)
-        cell_stroke_width: float = 1,  # Width of the cell border stroke
-        sqrt_scale_food: bool = True,
-        sqrt_scale_venom: bool = True,
-    ):
-        self.fig = None
-        self.ax = None
-        self.food_scatter = None
-        self.venom_scatter = None
+        self.food_patches: List[Circle] = []
+        self.venom_patches: List[Circle] = []
         self.cell_patches: List[PathPatch] = []
-        self.text_box = None
         self._stopped = False
 
-        self.food_size_range = food_size_range
-        self.venom_size_range = venom_size_range
+        self.food_diameter_range = food_diameter_range
+        self.venom_diameter_range = venom_diameter_range
         self.cell_roughness = cell_roughness
         self.cell_stroke_width = cell_stroke_width
-        self.sqrt_scale_food = sqrt_scale_food
-        self.sqrt_scale_venom = sqrt_scale_venom
 
-    def _sizes_area_from_values(
-        self, values: Sequence[float], smin: float, smax: float, sqrt_scale: bool
-    ) -> List[float]:
-        """Return sizes in points^2 so that area tracks values (optionally sqrt-tempered)."""
-        if not values:
-            return []
-        vals = [max(v, 0.0) for v in values]
-        if sqrt_scale:
-            vals = [math.sqrt(v) for v in vals]
-        vmax = max(vals) if vals else 1.0
-        if vmax <= 1e-12:
-            return [smin for _ in vals]
-        scale = (smax - smin) / vmax
-        return [smin + v * scale for v in vals]
+    def _diameter_from_value(self, value: float) -> float:
+        return max(0.0, value)
 
-    def _create_simple_rough_circle(self, center: tuple[float, float], radius: float) -> Path:
-        """Simpler version for better performance."""
+    def _create_rough_circle(self, center: tuple[float, float], radius: float) -> Path:
+        """Create a rough circle path for cells only."""
         x, y = center
-        num_points = 20  # Fixed number of points for consistency
+        num_points = 10
         
         angles = np.linspace(0, 2 * np.pi, num_points)
         base_x = x + radius * np.cos(angles)
         base_y = y + radius * np.sin(angles)
         
         # Add roughness
-        roughness = self.cell_roughness * radius * 0.6
+        roughness = self.cell_roughness * radius * 0.1
         rough_x = base_x + np.random.uniform(-roughness, roughness, num_points)
         rough_y = base_y + np.random.uniform(-roughness, roughness, num_points)
         
@@ -217,92 +82,104 @@ class RoughRenderer:
         self.ax.set_xlabel("X")
         self.ax.set_ylabel("Y")
         self.ax.set_title(title)
-        self.ax.set_facecolor('#f8f8f8')  # Light background
+        self.ax.set_facecolor('#f8f8f8')
 
-        # Food: blue filled circles with rough appearance
-        self.food_scatter = self.ax.scatter([], [], marker='o', c='tab:blue', 
-                                           alpha=0.7, label='Food')
-
-        # Venom: red hollow circles with rough appearance
-        self.venom_scatter = self.ax.scatter([], [], marker='o', facecolors='none',
-                                             edgecolors='tab:red', linewidths=1.5,
-                                             alpha=0.7, label='Venom')
-
-        # Cells will be drawn as rough patches
+        # Initialize empty patch lists
+        self.food_patches = []
+        self.venom_patches = []
         self.cell_patches = []
 
-        self.ax.legend(loc="upper right")
-        self.fig.canvas.mpl_connect('key_press_event', self._on_key)
+        # # Create legend
+        # from matplotlib.patches import Patch
+        # legend_elements = [
+        #     Patch(facecolor='#3498db', edgecolor='#2980b9', label='Food'),
+        #     Patch(facecolor='none', edgecolor='#e74c3c', linewidth=2, label='Venom'),
+        #     Patch(facecolor='tab:green', edgecolor='#2c3e50', label='Cell')
+        # ]
+        # self.ax.legend(handles=legend_elements, loc="upper right")
+        
+        # self.fig.canvas.mpl_connect('key_press_event', self._on_key)
         plt.tight_layout()
         plt.show(block=False)
 
     def update(self, universe: RenderableUniverse, cycle_idx: int) -> None:
-        # Clear previous cell patches
-        for patch in self.cell_patches:
+        # Clear previous patches
+        for patch in self.food_patches + self.venom_patches + self.cell_patches:
             patch.remove()
+        self.food_patches.clear()
+        self.venom_patches.clear()
         self.cell_patches.clear()
 
-        # Foods
-        fx = [f.position[0] for f in universe.foods]
-        fy = [f.position[1] for f in universe.foods]
-        fE = [f.energy for f in universe.foods]
-        self._set_offsets_safe(self.food_scatter, fx, fy)
-        self.food_scatter.set_sizes(
-            self._sizes_area_from_values(fE, *self.food_size_range, sqrt_scale=self.sqrt_scale_food)
-        )
+        # Foods - simple smooth circles proportional to energy
+        for food in universe.foods:
+            if food.energy <= 0:
+                continue
+                
+            diameter = self._diameter_from_value(food.energy)
+            radius = diameter / 2.0
+            
+            circle = Circle(
+                food.position,
+                radius,
+                facecolor="#3282bb",  # Bright blue
+                edgecolor="#0d293b",  # Darker blue border
+                linewidth=2.0,
+                alpha=0.9,
+            )
+            self.ax.add_patch(circle)
+            self.food_patches.append(circle)
 
-        # Venoms
-        vx = [v.position[0] for v in universe.venoms]
-        vy = [v.position[1] for v in universe.venoms]
-        vT = [v.toxicity for v in universe.venoms]
-        self._set_offsets_safe(self.venom_scatter, vx, vy)
-        self.venom_scatter.set_sizes(
-            self._sizes_area_from_values(vT, *self.venom_size_range, sqrt_scale=self.sqrt_scale_venom)
-        )
+        # Venoms - simple smooth hollow circles proportional to toxicity
+        for venom in universe.venoms:
+            if venom.toxicity <= 0:
+                continue
+                
+            diameter = self._diameter_from_value(venom.toxicity)
+            radius = diameter / 2.0
+            
+            circle = Circle(
+                venom.position,
+                radius,
+                facecolor="#7c1d1d",  # Match background for hollow effect
+                edgecolor="#2b0c09",  # Bright red
+                linewidth=2.0,  # Thicker for visibility
+                alpha=0.9,
+            )
+            self.ax.add_patch(circle)
+            self.venom_patches.append(circle)
 
-        # Cells - create rough circular patches with strokes
+        # Cells - rough circles with inheritance colors
         for cell in universe.cells:
             if cell.energy <= 0:
                 continue
                 
-            # Calculate radius from diameter
             radius = cell.diameter / 2.0
-            
-            # Create rough circle path
-            path = self._create_simple_rough_circle(cell.position, radius)
-            
-            # Create patch with fill and stroke
-            patch = PathPatch(
-                path,
+            circle = Circle(
+                cell.position,
+                radius,
                 facecolor=cell.hex_color,
-                edgecolor='black',
-                linewidth=self.cell_stroke_width,
-                alpha=0.8,
-                capstyle='round',
-                joinstyle='round'
+                edgecolor='#2c3e50',
+                linewidth=2.0,
+                alpha=0.9,
             )
-            
-            self.ax.add_patch(patch)
-            self.cell_patches.append(patch)
 
-        # Update title with stats
+            self.ax.add_patch(circle)
+            self.cell_patches.append(circle)
+
+        # Update title
         self.ax.set_title(
             f"Universe Live View — Cycle {cycle_idx}\n"
-            f"Cells: {len(universe.cells)} | Food: {len(universe.foods)} | Venom: {len(universe.venoms)}"
+            f"Cells: {len(universe.cells)} | Food: {len(universe.foods)} | Venom: {len(universe.venoms)}",
+            fontsize=12
         )
         
         self.fig.canvas.draw()
         plt.pause(0.01)
-
-    def _set_offsets_safe(self, scatter, xs, ys):
-        if xs and ys:
-            scatter.set_offsets(np.c_[xs, ys])
-        else:
-            scatter.set_offsets(np.empty((0, 2)))
 
     @property
     def stopped(self) -> bool:
         return self._stopped
 
 
-Renderer = RoughRenderer
+# Simple usage:
+Renderer = Renderer
