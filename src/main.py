@@ -31,11 +31,11 @@ if __name__ == "__main__":
     )
 
     # Add some agents to show on the plot
-    for _ in range(18):
+    for _ in range(7):
         universe.add_cell(
             Cell(
                 id=uuid4(),
-                energy=100.0,  # Start with less energy
+                energy=200.0,  # Start with less energy
                 position=(random.uniform(0, universe.width),
                           random.uniform(0, universe.height)),
                 basal_metabolism=0.08,
@@ -45,7 +45,7 @@ if __name__ == "__main__":
         )
         
     # Add 5 initial foods
-    for _ in range(14):
+    for _ in range(5):
         universe.add_food(
             Food(
                 id=uuid4(),
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         )
 
     # Add 5 initial venoms
-    for _ in range(14):
+    for _ in range(5):
         universe.add_venom(
             Venom(
                 id=uuid4(),

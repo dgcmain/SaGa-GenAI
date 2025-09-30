@@ -12,27 +12,27 @@ class Cell:
     position: Tuple[float, float]
 
     # dynamics
-    reproduction_probability: float = 0.1       
-    reproduction_energy_threshold: float = 35.0  
-    reproduction_age_threshold: int = 25         
+    reproduction_probability: float = 0.1
+    reproduction_energy_threshold: float = 35.0
+    reproduction_age_threshold: int = 125
     growth_factor: float = 0.0
-    basal_metabolism: float = 0.001
+    basal_metabolism: float = 0.0001
     move_cost_per_unit: float = 0.00001
     max_energy: float = 50.0
 
-    # movement - EXPLORATORY SETTINGS
-    vx: float = 5.5  # Much slower initial movement
-    vy: float = 3.5
+    # movement - PROPER RANDOM EXPLORATION SETTINGS
+    vx: float = 0.0
+    vy: float = 0.0
     ax: float = 0.0
     ay: float = 0.0
-    speed: float = 1.0  # Much slower maximum speed
-    accel_sigma: float = 0.3  # Much smaller acceleration changes
-    accel_tau: float = 2.0    # Slower acceleration changes for smoother movement
-    vel_damping: float = 0.1  # More damping to prevent overshooting
+    speed: float = 3.0  # Higher maximum speed for exploration
+    accel_sigma: float = 1.5  # Much larger acceleration changes for movement
+    accel_tau: float = 0.5    # Faster acceleration changes
+    vel_damping: float = 0.02  # Much less damping so they keep moving
 
-    # Direction change system
-    direction_change_prob: float = 0.01  # 1% chance per cycle to change direction
-    min_movement_time: int = 50  # More cycles between direction changes
+    # Direction change system - make them change direction more often
+    direction_change_prob: float = 0.8  # 5% chance per cycle to change direction
+    min_movement_time: int = 10  # Fewer cycles between direction changes
     movement_timer: int = 0
     
     # Direction change system
@@ -186,9 +186,8 @@ class Cell:
 
     def _consider_direction_change(self):
         """Randomly change direction with small angle adjustments (±20 degrees)."""
-        if (self.movement_timer > self.min_movement_time and 
-            random.random() < self.direction_change_prob):
-            
+        if (self.movement_timer > self.min_movement_time and random.random() < self.direction_change_prob):
+
             # Small direction change: ±20 degrees from current direction
             max_angle_change = math.radians(10)  # Convert 20 degrees to radians
             angle_change = random.uniform(-max_angle_change, max_angle_change)
@@ -210,16 +209,16 @@ class Cell:
 
     def _update_velocity(self, dt: float) -> None:
         """
-        Update velocity with smooth exploration.
+        Update velocity with more aggressive exploration.
         """
         if dt <= 0:
             return
 
-        # Gentle acceleration changes for organic movement
+        # More significant acceleration changes for actual movement
         sigma = self.accel_sigma
         tau = max(0.08, self.accel_tau)
 
-        # Ornstein-Uhlenbeck process for smooth wandering
+        # Ornstein-Uhlenbeck process for wandering
         sqrt_dt = math.sqrt(dt)
         self.ax += (-self.ax / tau) * dt + sigma * sqrt_dt * random.gauss(0, 1)
         self.ay += (-self.ay / tau) * dt + sigma * sqrt_dt * random.gauss(0, 1)
@@ -228,25 +227,11 @@ class Cell:
         self.vx += self.ax * dt
         self.vy += self.ay * dt
 
-        # Very gentle damping - just enough to prevent explosion
+        # Minimal damping - let them keep their momentum
         damp = max(0.0, min(1.0, self.vel_damping * dt))
         self.vx *= (1.0 - damp)
         self.vy *= (1.0 - damp)
 
-        # Maintain reasonable speed with soft cap
-        v2 = self.vx**2 + self.vy**2
-        vmax = max(1e-6, self.speed)
-        vmax2 = vmax * vmax
-        
-        if v2 > vmax2 * 1.5:  # Only cap if significantly over
-            scale = vmax / math.sqrt(v2)
-            alpha = 0.3
-            self.vx = (1 - alpha) * self.vx + alpha * (self.vx * scale)
-            self.vy = (1 - alpha) * self.vy + alpha * (self.vy * scale)
-        elif v2 < 0.5:  # Give a little push if moving too slow
-            boost = 0.5
-            self.vx += random.uniform(-boost, boost)
-            self.vy += random.uniform(-boost, boost)
 
     def _state(self) -> dict:
         return {
