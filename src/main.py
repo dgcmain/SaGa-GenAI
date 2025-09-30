@@ -31,7 +31,7 @@ if __name__ == "__main__":
     )
 
     # Add some agents to show on the plot
-    for _ in range(15):
+    for _ in range(8):
         universe.add_cell(
             Cell(
                 id=uuid4(),
@@ -89,8 +89,9 @@ if __name__ == "__main__":
             
             if elapsed >= frame_time:
                 cycle_count += 1
-                universe.run(random.uniform(2.0, 5.0))
-                renderer.update(universe, cycle_idx=cycle_count)                
+                input_energy = random.uniform(200.0, 250.0)
+                universe.run(input_energy=input_energy, cycle_count=cycle_count)
+                renderer.update(universe, cycle_idx=cycle_count)
                 if cycle_count % 60 == 0:  # Print status every 2 seconds
                     print(f"Cycle {cycle_count}: Energy={universe.energy:.2f}, "
                           f"Foods={len(universe.foods)}, Venoms={len(universe.venoms)}, "

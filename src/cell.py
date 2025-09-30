@@ -21,9 +21,9 @@ class Cell:
     max_energy: float = 50.0
 
     # movement
-    vx: float = 0.0
-    vy: float = 0.0
-    speed: float = 3.0           # max speed magnitude
+    vx: float = 1.0
+    vy: float = 1.0
+    speed: float = 10.0           # max speed magnitude
     jitter: float = 1.0          # random perturbation each cycle
 
     # visual properties
@@ -146,13 +146,15 @@ class Cell:
         return child
 
     def _mutate_color(self) -> Tuple[float, float, float]:
-        """Mutate the color with some probability, otherwise inherit parent's color."""
+        """Mutate only the green channel with some probability, otherwise inherit parent's color."""
         if random.random() > self.color_mutation_rate:
             return self.color
+        
         r, g, b = self.color
-        r = max(0.0, min(1.0, r + random.uniform(-self.color_mutation_strength, self.color_mutation_strength)))
+        
+        # Only mutate the green channel, keep red and blue unchanged
         g = max(0.0, min(1.0, g + random.uniform(-self.color_mutation_strength, self.color_mutation_strength)))
-        b = max(0.0, min(1.0, b + random.uniform(-self.color_mutation_strength, self.color_mutation_strength)))        
+        
         new_color = (r, g, b)
         return new_color
 

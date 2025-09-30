@@ -97,7 +97,7 @@ class Universe:
     def add_venom(self, venom: Venom) -> None:
         self.venoms.append(venom)
 
-    def run(self, input_energy: float) -> tuple[List[Food], List[Venom], List[Cell]]:
+    def run(self, input_energy: float, cycle_count: int) -> tuple[List[Food], List[Venom], List[Cell]]:
         """
         One simulation step:
         A) Update cells (move/grow/decay/reproduce), apply bounds, partial touch interactions
@@ -120,13 +120,14 @@ class Universe:
             self.cells.extend(offspring)
 
         # UNCOMMENT AND FIX THIS SECTION:
-        # usable = input_energy * self.waste_factor * random.uniform(0.8, 0.99)
-        # ef = usable * self.ratio
-        # ev = usable * (1.0 - self.ratio)
-        # foods_created = self._create_foods(self._random_partition(ef, self.min_unit_food, self.max_new_foods))
-        # venoms_created = self._create_venoms(self._random_partition(ev, self.min_unit_venom, self.max_new_venoms))
-
-        self.energy += input_energy
+        if cycle_count % 50 == 0:
+            usable = input_energy * self.waste_factor * random.uniform(0.8, 0.99)
+            ef = usable * self.ratio
+            ev = usable * (1.0 - self.ratio)
+            foods_created = self._create_foods(self._random_partition(ef, self.min_unit_food, self.max_new_foods))
+            venoms_created = self._create_venoms(self._random_partition(ev, self.min_unit_venom, self.max_new_venoms))
+            print(f"🔄 Cycle {cycle_count}: Added {len(foods_created)} foods and {len(venoms_created)} venoms")
+            self.energy += input_energy
 
         # self.degrade_all()
         # if self.cleanup_depleted:
@@ -190,7 +191,6 @@ class Universe:
 
     def to_json(self) -> str:
         return json.dumps(self.get_state(), indent=2)
-
 
     def _apply_bounds(self, cell: Cell) -> None:
         """Keep a cell inside bounds by bouncing or wrapping and update velocity if bouncing."""
@@ -286,7 +286,7 @@ class Universe:
             if food.energy > 0.0:
                 # Eating rate depends on cell size relative to food
                 cell_size_factor = min(cell.energy / (food.energy + 0.1), 2.0)  # Cap at 2x
-                base_eat_rate = 0.08
+                base_eat_rate = 0.1
                 eat_rate = base_eat_rate * cell_size_factor
                 
                 amt = min(food.energy * eat_rate, food.energy)
@@ -295,9 +295,6 @@ class Universe:
                 
                 if food.energy <= 0.01:
                     food.energy = 0.0
-                    print(f"🍽️ Cell finished eating! Final: {cell.energy:.2f}")
-                else:
-                    print(f"🍎 Eating... +{amt:.2f}, Cell: {cell.energy:.2f}, Food: {food.energy:.2f}")
 
         # Venom → cell (SHRINK gradually)  
         vi = self._nearest_venom_within(cell)
@@ -306,7 +303,7 @@ class Universe:
             if venom.toxicity > 0.0:
                 # Poisoning rate depends on venom potency relative to cell size
                 venom_potency = venom.toxicity / (cell.energy + 0.1)
-                base_poison_rate = 0.12
+                base_poison_rate = 0.09
                 poison_rate = base_poison_rate * venom_potency
                 
                 dmg = min(venom.toxicity * poison_rate, venom.toxicity)
@@ -315,13 +312,9 @@ class Universe:
                 
                 if venom.toxicity <= 0.01:
                     venom.toxicity = 0.0
-                    print(f"🧪 Venom depleted! Cell: {cell.energy:.2f}")
-                else:
-                    print(f"☠️ Poisoned... -{dmg:.2f}, Cell: {cell.energy:.2f}, Venom: {venom.toxicity:.2f}")
-                
+
                 if cell.energy <= 0.0:
                     cell.energy = 0.0
-                    print(f"💀 Cell succumbed to venom!")
 
     def _random_partition(self, total: float, min_unit: float, max_parts_cap: int) -> List[float]:
         """Randomly split 'total' into N parts >= min_unit, with N <= max_parts_cap."""
