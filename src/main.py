@@ -31,7 +31,7 @@ if __name__ == "__main__":
     )
 
     # Add some agents to show on the plot
-    for _ in range(20):
+    for _ in range(18):
         universe.add_cell(
             Cell(
                 id=uuid4(),
@@ -74,14 +74,15 @@ if __name__ == "__main__":
     renderer = Renderer()
     renderer.start(universe)
 
-    # Real-time simulation parameters
-    target_fps = 30
+    # Real-time simulation parameters - INCREASED FPS
+    target_fps = 30  # Higher target
     frame_time = 1.0 / target_fps
-    
+
     cycle_count = 0
     start_time = time.time()
     last_frame_time = start_time
-    
+    last_status_time = start_time
+
     try:
         while not renderer.stopped:
             current_time_sim = time.time()
@@ -89,16 +90,26 @@ if __name__ == "__main__":
             
             if elapsed >= frame_time:
                 cycle_count += 1
-                input_energy = random.uniform(200.0, 250.0)
-                universe.run(input_energy=input_energy, cycle_count=cycle_count)
+                
+                # Process multiple simulation steps per frame for faster simulation
+                steps_per_frame = 3  # Run 3 simulation steps per render frame
+                for _ in range(steps_per_frame):
+                    input_energy = random.uniform(200.0, 250.0)
+                    universe.run(input_energy=input_energy, cycle_count=cycle_count)
+                    cycle_count += 1  # Increment for each simulation step
+                
                 renderer.update(universe, cycle_idx=cycle_count)
-                if cycle_count % 60 == 0:  # Print status every 2 seconds
+                
+                # Print status less frequently
+                if current_time_sim - last_status_time >= 2.0:  # Every 2 seconds
                     print(f"Cycle {cycle_count}: Energy={universe.energy:.2f}, "
-                          f"Foods={len(universe.foods)}, Venoms={len(universe.venoms)}, "
-                          f"Cells={len(universe.cells)}")
+                        f"Foods={len(universe.foods)}, Venoms={len(universe.venoms)}, "
+                        f"Cells={len(universe.cells)}")
+                    last_status_time = current_time_sim
+                
                 last_frame_time = current_time_sim
             else:
-                time.sleep(0.001)
+                time.sleep(0.0001)  # Reduced sleep time
                 
     except KeyboardInterrupt:
         print("\nSimulation interrupted by user")

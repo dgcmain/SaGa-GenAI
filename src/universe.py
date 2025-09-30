@@ -97,9 +97,10 @@ class Universe:
     def run(self, input_energy: float, cycle_count: int) -> tuple[List[Food], List[Venom], List[Cell]]:
         """Optimized simulation step with spatial partitioning."""
         
-        # Update spatial grid at start of cycle
-        self._update_spatial_grid()
-        
+        # Only update spatial grid every few cycles for performance
+        if cycle_count % 5 == 0:
+            self._update_spatial_grid()
+            
         offspring: List[Cell] = []
         foods_created: List[Food] = []
         venoms_created: List[Venom] = []

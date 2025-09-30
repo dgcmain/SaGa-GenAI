@@ -88,7 +88,7 @@ class Cell:
         speed_mag = (self.vx**2 + self.vy**2)**0.5
         self.energy -= self.move_cost_per_unit * speed_mag
                 
-        if self.energy <= 0.0:
+        if self.energy <= 8.0:
             self.die()
             return None
 
