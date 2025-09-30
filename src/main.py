@@ -35,15 +35,16 @@ if __name__ == "__main__":
         universe.add_cell(
             Cell(
                 id=uuid4(),
-                energy=20.0,
+                energy=15.0,  # Start with less energy
                 position=(random.uniform(0, universe.width),
                         random.uniform(0, universe.height)),
-                basal_metabolism=0.02,  # Much lower metabolism for 30 FPS
-                reproduction_probability=0.05,  # Lower reproduction rate
+                basal_metabolism=0.08,
+                reproduction_probability=0.05,
+                degradation_factor=0.995,
+                move_cost_per_unit=0.02,
             )
         )
-
-    
+        
     # Add 5 initial foods
     for _ in range(5):
         universe.add_food(

@@ -100,9 +100,9 @@ class Universe:
     def run(self, input_energy: float) -> tuple[List[Food], List[Venom], List[Cell]]:
         """
         One simulation step:
-          A) Update cells (move/grow/decay/reproduce), apply bounds, partial touch interactions
-          B) Spawn Food/Venom from input energy
-          C) Degrade resources & cleanup
+        A) Update cells (move/grow/decay/reproduce), apply bounds, partial touch interactions
+        B) Spawn Food/Venom from input energy
+        C) Degrade resources & cleanup
         Returns (foods_created, venoms_created, offspring_created)
         """
 
@@ -119,22 +119,24 @@ class Universe:
         if offspring:
             self.cells.extend(offspring)
 
-        if self.cleanup_depleted:
-            self.cells = [c for c in self.cells if c.energy > 0.0]
-            self.foods = [f for f in self.foods if f.energy > 0.0]
-            self.venoms = [v for v in self.venoms if v.toxicity > 0.0]
-
-        # usable = input_energy * self.waste_factor * random.uniform(0.8, 0.99)
-        # ef = usable * self.ratio
-        # ev = usable * (1.0 - self.ratio)
-        # foods_created = self._create_foods(self._random_partition(ef, self.min_unit_food,  self.max_new_foods))
+        # UNCOMMENT AND FIX THIS SECTION:
+        usable = input_energy * self.waste_factor * random.uniform(0.8, 0.99)
+        ef = usable * self.ratio
+        ev = usable * (1.0 - self.ratio)
+        # foods_created = self._create_foods(self._random_partition(ef, self.min_unit_food, self.max_new_foods))
         # venoms_created = self._create_venoms(self._random_partition(ev, self.min_unit_venom, self.max_new_venoms))
 
-        # self.energy += input_energy
+        self.energy += input_energy
 
         # self.degrade_all()
 
+        # if self.cleanup_depleted:
+        #     self.cells = [c for c in self.cells if c.energy > 0.0]
+        #     self.foods = [f for f in self.foods if f.energy > 0.0]
+        #     self.venoms = [v for v in self.venoms if v.toxicity > 0.0]
+
         # return foods_created, venoms_created, offspring
+        return offspring
 
     def degrade_all(self) -> None:
         for f in self.foods:
