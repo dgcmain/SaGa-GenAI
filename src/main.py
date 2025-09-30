@@ -31,7 +31,7 @@ if __name__ == "__main__":
     )
 
     # Add some agents to show on the plot
-    for _ in range(8):
+    for _ in range(20):
         universe.add_cell(
             Cell(
                 id=uuid4(),
