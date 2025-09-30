@@ -27,8 +27,8 @@ class Universe:
         width: float = 1000.0,  # Larger default for better spatial partitioning
         height: float = 1000.0,
         venom_energy_to_toxicity: float = 1.0,
-        food_degrade_factor: float = 0.95,
-        venom_degrade_factor: float = 0.90,
+        food_degrade_factor: float = 0.78,
+        venom_degrade_factor: float = 0.80,
         cleanup_depleted: bool = True,
 
         # spawn controls

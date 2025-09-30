@@ -21,15 +21,11 @@ class Cell:
     max_energy: float = 50.0
 
     # movement
-    vx: float = 1.0
-    vy: float = 1.0
-    speed: float = 10.0           # max speed magnitude
-    jitter: float = 1.0          # random perturbation each cycle
+    vx: float = 9.0
+    vy: float = 9.0
+    speed: float = 20.0           # max speed magnitude
+    jitter: float = 9.0          # random perturbation each cycle
 
-    # visual properties
-    min_diameter: float = 5.0    # diameter when energy = 0
-    max_diameter: float = 30.0   # diameter when energy = max_energy
-    
     color: Tuple[float, float, float] = field(default_factory=lambda: (0.0, random.uniform(0.7, 0.99), 0.0))
     color_mutation_rate: float = 0.99    
     color_mutation_strength: float = 0.8 
@@ -109,7 +105,7 @@ class Cell:
         )
         child = None
         if can_reproduce:
-            fraction = 0.4
+            fraction = 0.5
             child_energy = self.energy * fraction
             self.energy -= child_energy + 2.0
 
@@ -134,8 +130,6 @@ class Cell:
                 basal_metabolism=self.basal_metabolism,
                 move_cost_per_unit=self.move_cost_per_unit,
                 max_energy=self.max_energy,
-                min_diameter=self.min_diameter,
-                max_diameter=self.max_diameter,
                 color=self._mutate_color(),
                 color_mutation_rate=self.color_mutation_rate,
                 color_mutation_strength=self.color_mutation_strength,
