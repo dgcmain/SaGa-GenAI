@@ -90,9 +90,7 @@ if __name__ == "__main__":
             
             if elapsed >= frame_time:
                 cycle_count += 1
-                
-                # Process multiple simulation steps per frame for faster simulation
-                steps_per_frame = 3  # Run 3 simulation steps per render frame
+                steps_per_frame = 3
                 for _ in range(steps_per_frame):
                     input_energy = random.uniform(200.0, 250.0)
                     universe.run(input_energy=input_energy, cycle_count=cycle_count)
@@ -101,12 +99,11 @@ if __name__ == "__main__":
                 renderer.update(universe, cycle_idx=cycle_count)
                 
                 # Print status less frequently
-                if current_time_sim - last_status_time >= 2.0:  # Every 2 seconds
-                    print(f"Cycle {cycle_count}: Energy={universe.energy:.2f}, "
-                        f"Foods={len(universe.foods)}, Venoms={len(universe.venoms)}, "
-                        f"Cells={len(universe.cells)}")
+                if current_time_sim - last_status_time >= 2.0: 
+                    import pprint
+                    pprint.pprint(universe.state())
                     last_status_time = current_time_sim
-                
+
                 last_frame_time = current_time_sim
             else:
                 time.sleep(0.0001)  # Reduced sleep time

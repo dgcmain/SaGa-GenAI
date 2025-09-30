@@ -232,8 +232,14 @@ class Cell:
         self.vx *= (1.0 - damp)
         self.vy *= (1.0 - damp)
 
-
-    def _state(self) -> dict:
+    def state(self) -> dict:
+        return {
+            "id": str(self.id),
+            "energy": self.energy,
+            "position": self.position,
+        }
+    
+    def state_full(self) -> dict:
         return {
             "id": str(self.id),
             "energy": self.energy,

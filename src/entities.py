@@ -15,6 +15,13 @@ class Food:
         if self.energy < 0.01:
             self.energy = 0.0
 
+    def state(self) -> dict:
+        return {
+            "id": str(self.id),
+            "energy": self.energy,
+            "position": self.position,
+        }
+
 
 @dataclass
 class Venom:
@@ -26,3 +33,10 @@ class Venom:
         self.toxicity *= factor
         if self.toxicity < 0.01:
             self.toxicity = 0.0
+
+    def state(self) -> dict:
+        return {
+            "id": str(self.id),
+            "energy": self.toxicity,
+            "position": self.position,
+        }

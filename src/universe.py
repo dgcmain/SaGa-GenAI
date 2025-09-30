@@ -84,7 +84,7 @@ class Universe:
         # Spatial partitioning for performance
         self._spatial_grid: DefaultDict[Tuple[int, int], List[Cell]] = defaultdict(list)
         self._grid_cell_size = 100.0  # Size of each grid cell
-        
+
     def add_cell(self, agent: Cell) -> None:
         self.cells.append(agent)
 
@@ -154,49 +154,53 @@ class Universe:
             self.foods  = [f for f in self.foods  if f.energy   > 0.0]
             self.venoms = [v for v in self.venoms if v.toxicity > 0.0]
 
-    def get_state(self) -> dict[str, Any]:
+    def state(self) -> dict[str, Any]:
+        """Broadcast minimal state for high-frequency updates (e.g., rendering)."""
         return {
-            "energy": self.energy,
-            "foods": [
-                {"id": str(f.id), "energy": f.energy, "position": f.position}
-                for f in self.foods
-            ],
-            "venoms": [
-                {"id": str(v.id), "toxicity": v.toxicity, "position": v.position}
-                for v in self.venoms
-            ],
-            "cells": [
-                {
-                    "id": str(a.id),
-                    "energy": a.energy,
-                    "position": a.position,
-                    "velocity": (getattr(a, "vx", 0.0), getattr(a, "vy", 0.0)),
-                }
-                for a in self.cells
-            ],
-            "config": {
-                "bounds": (self.width, self.height),
-                "boundary_mode": self.boundary_mode,
-                "bounce_restitution": self.bounce_restitution,
-                "ratio": self.ratio,
-                "waste_factor": self.waste_factor,
-                "venom_energy_to_toxicity": self.venom_energy_to_toxicity,
-                "food_degrade_factor": self.food_degrade_factor,
-                "venom_degrade_factor": self.venom_degrade_factor,
-                "cleanup_depleted": self.cleanup_depleted,
-                "max_new_foods": self.max_new_foods,
-                "max_new_venoms": self.max_new_venoms,
-                "min_unit_food": self.min_unit_food,
-                "min_unit_venom": self.min_unit_venom,
-                "touch_radius_food": (self.touch_radius_food2 ** 0.5),
-                "touch_radius_venom": (self.touch_radius_venom2 ** 0.5),
-                "food_transfer_fraction": self.food_transfer_fraction,
-                "venom_transfer_fraction": self.venom_transfer_fraction,
-                "food_transfer_cap": self.food_transfer_cap,
-                "venom_transfer_cap": self.venom_transfer_cap,
-            },
+            "cells": [cell.state() for cell in self.cells if cell.energy > 0],
+            "foods": [food.state() for food in self.foods if food.energy > 0],
+            "venoms": [venom.state() for venom in self.venoms if venom.toxicity > 0],
         }
 
+    def _state_full(self) -> dict[str, Any]:
+        """Broadcast the complete state of the universe using each entity's _state method."""
+        alive_cells = [cell for cell in self.cells if cell.energy > 0]
+        alive_foods = [food for food in self.foods if food.energy > 0]
+        alive_venoms = [venom for venom in self.venoms if venom.toxicity > 0]
+        
+        return {
+            "universe": {
+                "width": self.width,
+                "height": self.height,
+                "total_energy": self.energy,
+                "cycle_count": getattr(self, '_cycle_count', 0),
+                "boundary_mode": self.boundary_mode,
+                "bounce_restitution": self.bounce_restitution,
+            },
+            "cells": [cell._state() for cell in alive_cells],
+            "foods": [food._state() for food in alive_foods],
+            "venoms": [venom._state() for venom in alive_venoms],
+            "statistics": {
+                "total_cells": len(alive_cells),
+                "total_foods": len(alive_foods),
+                "total_venoms": len(alive_venoms),
+                "average_cell_energy": (
+                    sum(cell.energy for cell in alive_cells) / max(1, len(alive_cells))
+                ),
+                "average_cell_age": (
+                    sum(cell.age for cell in alive_cells) / max(1, len(alive_cells))
+                ),
+                "total_cell_energy": sum(cell.energy for cell in alive_cells),
+                "total_food_energy": sum(food.energy for food in alive_foods),
+                "total_venom_toxicity": sum(venom.toxicity for venom in alive_venoms),
+            },
+            "spatial_info": {
+                "grid_cell_size": self._grid_cell_size,
+                "cell_check_radius": self.cell_check_radius,
+                "grid_occupancy": len(self._spatial_grid),
+            }
+        }
+    
     def to_json(self) -> str:
         return json.dumps(self.get_state(), indent=2)
 
