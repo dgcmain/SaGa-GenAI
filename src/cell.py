@@ -21,14 +21,19 @@ class Cell:
     max_energy: float = 50.0
 
     # movement - EXPLORATORY SETTINGS
-    vx: float = 5.0  # Start with some initial movement
-    vy: float = 5.0
+    vx: float = 5.5  # Much slower initial movement
+    vy: float = 3.5
     ax: float = 0.0
     ay: float = 0.0
-    speed: float = 4.0  # Good exploration speed
-    accel_sigma: float = 1.2  # More acceleration for direction changes
-    accel_tau: float = 0.8    # Slower acceleration changes for sustained movement
-    vel_damping: float = 0.05  # Much less damping for continuous movement
+    speed: float = 1.0  # Much slower maximum speed
+    accel_sigma: float = 0.3  # Much smaller acceleration changes
+    accel_tau: float = 2.0    # Slower acceleration changes for smoother movement
+    vel_damping: float = 0.1  # More damping to prevent overshooting
+
+    # Direction change system
+    direction_change_prob: float = 0.01  # 1% chance per cycle to change direction
+    min_movement_time: int = 50  # More cycles between direction changes
+    movement_timer: int = 0
     
     # Direction change system
     direction_change_prob: float = 0.02  # 2% chance per cycle to change direction
@@ -84,9 +89,7 @@ class Cell:
             return None
 
         self.energy -= self.basal_metabolism
-
-        speed_mag = (self.vx**2 + self.vy**2)**0.5
-        self.energy -= self.move_cost_per_unit * speed_mag
+        self.energy -= self.move_cost_per_unit * (self.vx**2 + self.vy**2)**0.5
                 
         if self.energy <= 8.0:
             self.die()
@@ -121,14 +124,14 @@ class Cell:
 
             # Give child some random initial direction
             angle = random.uniform(0, 2 * math.pi)
-            child_vx = math.cos(angle) * 2.0
-            child_vy = math.sin(angle) * 2.0
+            child_vx = math.cos(angle) * 0.3  # Much slower
+            child_vy = math.sin(angle) * 0.3  # Much slower
 
             child = Cell(
                 id=uuid4(),
                 energy=child_energy,
-                position=(self.position[0] + random.uniform(-25.0, 25.0), 
-                          self.position[1] + random.uniform(-25.0, 25.0)),
+                position=(self.position[0] + self.energy/2 + random.uniform(-25.0, 25.0), 
+                          self.position[1] + self.energy/2 + random.uniform(-25.0, 25.0)),
                 vx=child_vx,
                 vy=child_vy,
                 ax=0.0,
@@ -182,18 +185,20 @@ class Cell:
         self._consider_direction_change()
 
     def _consider_direction_change(self):
-        """Randomly change direction to explore more."""
+        """Randomly change direction with small angle adjustments (±20 degrees)."""
         if (self.movement_timer > self.min_movement_time and 
             random.random() < self.direction_change_prob):
             
-            # Significant direction change
-            angle_change = random.uniform(-math.pi/2, math.pi/2)  # ±90 degrees
+            # Small direction change: ±20 degrees from current direction
+            max_angle_change = math.radians(10)  # Convert 20 degrees to radians
+            angle_change = random.uniform(-max_angle_change, max_angle_change)
+            
             current_angle = math.atan2(self.vy, self.vx)
             new_angle = current_angle + angle_change
             
-            # Set new velocity with some randomness
+            # Set new velocity with minimal speed variation
             speed = math.sqrt(self.vx**2 + self.vy**2)
-            new_speed = max(1.0, speed * random.uniform(0.8, 1.2))
+            new_speed = max(0.5, speed * random.uniform(0.9, 1.1))  # Small speed variation
             
             self.vx = math.cos(new_angle) * new_speed
             self.vy = math.sin(new_angle) * new_speed

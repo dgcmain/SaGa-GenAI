@@ -45,7 +45,7 @@ if __name__ == "__main__":
         )
         
     # Add 5 initial foods
-    for _ in range(5):
+    for _ in range(14):
         universe.add_food(
             Food(
                 id=uuid4(),
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         )
 
     # Add 5 initial venoms
-    for _ in range(5):
+    for _ in range(14):
         universe.add_venom(
             Venom(
                 id=uuid4(),
