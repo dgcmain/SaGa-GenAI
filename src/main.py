@@ -37,7 +37,7 @@ if __name__ == "__main__":
                 id=uuid4(),
                 energy=55.0,  # Start with less energy
                 position=(random.uniform(0, universe.width),
-                        random.uniform(0, universe.height)),
+                          random.uniform(0, universe.height)),
                 basal_metabolism=0.08,
                 reproduction_probability=0.05,
                 degradation_factor=0.995,

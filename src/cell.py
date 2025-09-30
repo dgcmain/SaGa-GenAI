@@ -1,7 +1,7 @@
 from __future__ import annotations
 import random
 from uuid import uuid4, UUID
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Tuple
 
 
@@ -12,9 +12,9 @@ class Cell:
     position: Tuple[float, float]
 
     # dynamics
-    reproduction_probability: float = 0.75  # 75% chance when conditions are met
-    reproduction_energy_threshold: float = 35.0  # Energy level required for reproduction
-    reproduction_age_threshold: int = 10  # Minimum age (cycles) required for reproduction
+    reproduction_probability: float = 0.75       
+    reproduction_energy_threshold: float = 35.0  
+    reproduction_age_threshold: int = 10         
     growth_factor: float = 0.0
     degradation_factor: float = 0.998
     basal_metabolism: float = 0.05
@@ -30,6 +30,10 @@ class Cell:
     # visual properties
     min_diameter: float = 5.0    # diameter when energy = 0
     max_diameter: float = 30.0   # diameter when energy = max_energy
+    
+    color: Tuple[float, float, float] = field(default_factory=lambda: (0.0, random.uniform(0.7, 0.99), 0.0))
+    color_mutation_rate: float = 0.99     # Probability of color mutation during reproduction
+    color_mutation_strength: float = 0.8  # How much colors can change during mutation
 
     # lifetime tracking
     age: int = 0
@@ -46,6 +50,12 @@ class Cell:
         return self.min_diameter + energy_ratio * (self.max_diameter - self.min_diameter)
 
     @property
+    def hex_color(self) -> str:
+        """Convert RGB color to hex format for matplotlib."""
+        r, g, b = self.color
+        return f'#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}'
+
+    @property
     def lifetime_stats(self) -> dict:
         """Get statistics about the cell's lifetime."""
         return {
@@ -56,10 +66,8 @@ class Cell:
                 self.energy >= self.reproduction_energy_threshold and 
                 self.age >= self.reproduction_age_threshold
             ),
-            "reproduction_ready": (
-                f"Energy: {self.energy >= self.reproduction_energy_threshold}, "
-                f"Age: {self.age >= self.reproduction_age_threshold}"
-            )
+            "color": self.color,
+            "hex_color": self.hex_color,
         }
 
     def run(self) -> Cell | None:
@@ -118,10 +126,12 @@ class Cell:
                 self.die()
                 return None
 
+            # Inherit color with possible mutation
             child = Cell(
                 id=uuid4(),
                 energy=child_energy,
-                position=(self.position[0] + random.uniform(-25.0, 25.0), self.position[1] + random.uniform(-25.0, 25.0)),
+                position=(self.position[0] + random.uniform(-25.0, 25.0), 
+                          self.position[1] + random.uniform(-25.0, 25.0)),
                 vx=-self.vx * 0.4,
                 vy=-self.vy * 0.4,
                 speed=self.speed,
@@ -136,11 +146,25 @@ class Cell:
                 max_energy=self.max_energy,
                 min_diameter=self.min_diameter,
                 max_diameter=self.max_diameter,
+                color=self._mutate_color(),
+                color_mutation_rate=self.color_mutation_rate,
+                color_mutation_strength=self.color_mutation_strength,
                 age=0,
                 max_age=self.max_age,
             )
 
         return child
+
+    def _mutate_color(self) -> Tuple[float, float, float]:
+        """Mutate the color with some probability, otherwise inherit parent's color."""
+        if random.random() > self.color_mutation_rate:
+            return self.color
+        r, g, b = self.color
+        r = max(0.0, min(1.0, r + random.uniform(-self.color_mutation_strength, self.color_mutation_strength)))
+        g = max(0.0, min(1.0, g + random.uniform(-self.color_mutation_strength, self.color_mutation_strength)))
+        b = max(0.0, min(1.0, b + random.uniform(-self.color_mutation_strength, self.color_mutation_strength)))        
+        new_color = (r, g, b)
+        return new_color
 
     def move(self) -> None:
         x, y = self.position
@@ -158,13 +182,16 @@ class Cell:
         self._update_velocity()
 
     def _update_velocity(self) -> None:
-    
-        """
-        Update the cell's velocity based on an external (vx, vy) tuple.
-        Velocity is clamped to the max speed.
-        """
+        """Update the cell's velocity with random jitter."""
         self.vx = self.vx + random.uniform(-self.jitter, self.jitter)
         self.vy = self.vy + random.uniform(-self.jitter, self.jitter)
+
+        # Clamp to max speed
+        speed_squared = self.vx**2 + self.vy**2
+        if speed_squared > self.speed**2:
+            scale = self.speed / (speed_squared ** 0.5)
+            self.vx *= scale
+            self.vy *= scale
 
     def _state(self) -> dict:
         return {
@@ -174,5 +201,7 @@ class Cell:
             "diameter": self.diameter,
             "age": self.age,
             "max_age": self.max_age,
+            "color": self.color,
+            "hex_color": self.hex_color,
             "lifetime_stats": self.lifetime_stats,
         }

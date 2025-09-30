@@ -84,7 +84,7 @@ class Renderer:
                                              edgecolors='tab:red', label='Venom')
 
         # Cells: green filled circles - use diameter property directly
-        self.cell_scatter = self.ax.scatter([], [], marker='o', c='tab:green', label='Cell')
+        self.cell_scatter = self.ax.scatter([], [], marker='o', label='Cell')
 
         self.ax.legend(loc="upper right")
         self.fig.canvas.mpl_connect('key_press_event', self._on_key)
@@ -113,8 +113,11 @@ class Renderer:
         cx = [c.position[0] for c in universe.cells]
         cy = [c.position[1] for c in universe.cells]
         cell_diameters = [c.diameter for c in universe.cells]
+        cell_colors = [cell.hex_color for cell in universe.cells]
+
         self._set_offsets_safe(self.cell_scatter, cx, cy)
         self.cell_scatter.set_sizes(self._diameters_to_areas(cell_diameters))
+        self.cell_scatter.set_color(cell_colors)
 
         # Update title
         self.ax.set_title(f"Universe Live View — Cycle {cycle_idx}")
