@@ -35,7 +35,7 @@ if __name__ == "__main__":
         universe.add_cell(
             Cell(
                 id=uuid4(),
-                energy=15.0,  # Start with less energy
+                energy=55.0,  # Start with less energy
                 position=(random.uniform(0, universe.width),
                         random.uniform(0, universe.height)),
                 basal_metabolism=0.08,
@@ -67,7 +67,6 @@ if __name__ == "__main__":
             )
         )
 
-
     print("Initial state (summary):")
     print(f"Total energy tracked: {universe.energy:.2f}")
     print(f"Foods alive: {len(universe.foods)} | Venoms alive: {len(universe.venoms)}")
@@ -91,23 +90,12 @@ if __name__ == "__main__":
             
             if elapsed >= frame_time:
                 cycle_count += 1
-                
-                # Increased input energy to sustain ecosystem
                 universe.run(random.uniform(2.0, 5.0))
-                
-                # Update velocity less frequently
-                if cycle_count % 20 == 0:  # Every 20 cycles (~0.67 seconds)
-                    for cell in universe.cells:
-                        new_velocity = (random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5))
-                        cell.update_velocity(new_velocity)
-                
-                renderer.update(universe, cycle_idx=cycle_count)
-                
+                renderer.update(universe, cycle_idx=cycle_count)                
                 if cycle_count % 60 == 0:  # Print status every 2 seconds
                     print(f"Cycle {cycle_count}: Energy={universe.energy:.2f}, "
                           f"Foods={len(universe.foods)}, Venoms={len(universe.venoms)}, "
                           f"Cells={len(universe.cells)}")
-                
                 last_frame_time = current_time_sim
             else:
                 time.sleep(0.001)
