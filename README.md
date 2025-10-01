@@ -235,7 +235,7 @@ We welcome contributions of all kinds:
 ## 📝 License
 
 MIT License
-Copyright (c) 2024 SaGa-GenAI Contributors
+Copyright (c) 2025 SaGa-GenAI Contributors
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
