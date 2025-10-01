@@ -60,7 +60,8 @@ class Renderer:
     def start(self, universe: RenderableUniverse, title: str = "Universe Live View") -> None:
         # Create figure with minimal elements
         self.fig, self.ax = plt.subplots(figsize=(12, 10))
-        
+        self.fig.canvas.toolbar.pack_forget()  # Hide the toolbar
+
         # Remove all axes, ticks, labels for clean look
         self.ax.set_xlim(0, universe.width)
         self.ax.set_ylim(0, universe.height)
