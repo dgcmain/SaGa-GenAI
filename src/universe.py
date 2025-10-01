@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from entities import Food, Venom
 from cell import Cell
-from tools import _dist2
+from tools import distance_to
 
 
 class Universe:
@@ -242,52 +242,6 @@ class Universe:
         if hasattr(cell, "vx"): cell.vx = vx
         if hasattr(cell, "vy"): cell.vy = vy
 
-    def _nearest_food_within(self, cell: Cell) -> Optional[int]:
-        """Find nearest food that is touching the cell (surface-to-surface)."""
-        cell_radius = cell.diameter / 2.0
-        best_i, best_distance = None, float('inf')
-        
-        for i, food in enumerate(self.foods):
-            if food.energy <= 0:
-                continue
-                
-            # Calculate distance between centers
-            distance = _dist2(cell.position, food.position) ** 0.5
-            
-            # Food radius based on its energy (since diameter = energy)
-            food_radius = food.energy / 2.0
-            
-            # Check if surfaces are touching or overlapping
-            if distance <= (cell_radius + food_radius):
-                if distance < best_distance:
-                    best_distance = distance
-                    best_i = i
-        
-        return best_i
-
-    def _nearest_venom_within(self, cell: Cell) -> Optional[int]:
-        """Find nearest venom that is touching the cell (surface-to-surface)."""
-        cell_radius = cell.diameter / 2.0
-        best_i, best_distance = None, float('inf')
-        
-        for i, venom in enumerate(self.venoms):
-            if venom.toxicity <= 0:
-                continue
-                
-            # Calculate distance between centers
-            distance = _dist2(cell.position, venom.position) ** 0.5
-            
-            # Venom radius based on its toxicity (since diameter = toxicity)
-            venom_radius = venom.toxicity / 2.0
-            
-            # Check if surfaces are touching or overlapping
-            if distance <= (cell_radius + venom_radius):
-                if distance < best_distance:
-                    best_distance = distance
-                    best_i = i
-        
-        return best_i
-
     def _interact_partial(self, cell: Cell) -> None:
         """Optimized interaction checking only nearby objects."""
         if cell.energy <= 0.0:
@@ -302,7 +256,7 @@ class Universe:
         # Food interactions
         for food in nearby_foods:
             if food.energy > 0:
-                distance = _dist2(cell.position, food.position) ** 0.5
+                distance = distance_to(cell.position, food.position)
                 food_radius = food.energy / 2.0
                 
                 if distance <= (cell_radius + food_radius):
@@ -321,7 +275,7 @@ class Universe:
         # Venom interactions
         for venom in nearby_venoms:
             if venom.toxicity > 0:
-                distance = _dist2(cell.position, venom.position) ** 0.5
+                distance = distance_to(cell.position, venom.position)
                 venom_radius = venom.toxicity / 2.0
                 
                 if distance <= (cell_radius + venom_radius):
@@ -412,7 +366,7 @@ class Universe:
                 if check_key in self._spatial_grid:
                     for cell in self._spatial_grid[check_key]:
                         # Check actual distance
-                        if _dist2(position, cell.position) <= self.cell_check_radius2:
+                        if distance_to(position, cell.position) <= self.cell_check_radius2:
                             nearby_cells.append(cell)
         
         return nearby_cells
@@ -421,7 +375,7 @@ class Universe:
         """Get foods near a position."""
         nearby_foods = []
         for food in self.foods:
-            if food.energy > 0 and _dist2(position, food.position) <= self.cell_check_radius2:
+            if food.energy > 0 and distance_to(position, food.position) <= self.cell_check_radius2:
                 nearby_foods.append(food)
         return nearby_foods
 
@@ -429,6 +383,6 @@ class Universe:
         """Get venoms near a position."""
         nearby_venoms = []
         for venom in self.venoms:
-            if venom.toxicity > 0 and _dist2(position, venom.position) <= self.cell_check_radius2:
+            if venom.toxicity > 0 and distance_to(position, venom.position) <= self.cell_check_radius2:
                 nearby_venoms.append(venom)
         return nearby_venoms
